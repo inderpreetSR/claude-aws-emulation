@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AWS Emulator Dashboard</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#16202b; --muted:#5d6b7a; --line:#dfe4ea;
+  --accent:#0b6bcb; --accent-ink:#ffffff; --ok:#1a7f4b; --bad:#b3261e; --warn:#8a5a00;
+  --row:#f1f4f7; --code:#f1f4f7;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#11161c; --panel:#1a212a; --ink:#e6ebf1; --muted:#98a6b5; --line:#2b3542;
+    --accent:#5aa9f5; --accent-ink:#0b1420; --ok:#5fd396; --bad:#ff8a80; --warn:#f0c060;
+    --row:#212a35; --code:#141a21; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:16px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+h1{font-size:15px;margin:0 6px 2px;letter-spacing:.01em}
+.sub{color:var(--muted);font-size:12px;margin:0 6px 14px;word-break:break-all}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);margin:0 6px 14px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.pill.ok .dot{background:var(--ok)} .pill.bad .dot{background:var(--bad)}
+.group{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:14px 6px 4px}
+nav button{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;background:none;color:inherit;
+  font:inherit;text-align:left;padding:7px 8px;border-radius:7px;cursor:pointer}
+nav button:hover{background:var(--row)}
+nav button.on{background:var(--accent);color:var(--accent-ink)}
+.count{font-variant-numeric:tabular-nums;font-size:12px;opacity:.8}
+main{padding:22px 26px;min-width:0}
+.head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.head h2{font-size:19px;margin:0}
+.crumb{color:var(--muted);font-size:13px}
+.crumb a{color:var(--accent);cursor:pointer;text-decoration:none}
+.spacer{flex:1}
+button.act{border:1px solid var(--line);background:var(--panel);color:inherit;font:inherit;padding:6px 12px;border-radius:7px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.scroll{overflow:auto;max-height:calc(100vh - 150px)}
+table{border-collapse:collapse;width:100%}
+th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:12px;color:var(--muted);font-weight:600;
+  padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top;max-width:520px;overflow-wrap:anywhere}
+tr:last-child td{border-bottom:0}
+tr.link{cursor:pointer} tr.link:hover td{background:var(--row)}
+tr.link td:first-child{color:var(--accent);font-weight:600}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.empty,.err{padding:26px;color:var(--muted)}
+.err{color:var(--bad)}
+.err small{display:block;color:var(--muted);margin-top:6px}
+.sql{padding:14px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+textarea{width:100%;min-height:110px;resize:vertical;background:var(--code);color:var(--ink);border:1px solid var(--line);
+  border-radius:7px;padding:10px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select,input{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:6px 8px;font:inherit}
+.note{color:var(--muted);font-size:12px}
+.tag{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line)}
+.tag.ok{color:var(--ok)} .tag.bad{color:var(--bad)} .tag.warn{color:var(--warn)}
+@media (max-width:760px){.app{grid-template-columns:1fr} aside{position:static;height:auto} main{padding:16px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>AWS Emulator</h1>
+    <p class="sub" id="endpoint">connecting…</p>
+    <span class="pill" id="pill"><span class="dot"></span><span id="pilltext">checking</span></span>
+    <nav id="nav"></nav>
+  </aside>
+  <main>
+    <div class="head">
+      <h2 id="title">Loading</h2>
+      <span class="crumb" id="crumb"></span>
+      <span class="spacer"></span>
+      <span class="note" id="stamp"></span>
+      <button class="act" id="refresh">Refresh</button>
+    </div>
+    <div class="card" id="card"><div class="empty">Loading…</div></div>
+  </main>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let views = [], current = {id:null, key:null, parent:null};
+const GOOD = /^(SUCCEEDED|Completed|ACTIVE|OK|InService|Available)$/i, BAD = /^(FAILED|Failed|ALARM|CANCELLED|Stopped|ABORTED|TIMED_OUT)$/i,
+      BUSY = /^(RUNNING|InProgress|QUEUED|Creating|INSUFFICIENT_DATA|Stopping)$/i;
+
+async function api(path, opts){ const r = await fetch(path, opts); return r.json(); }
+
+function cell(v){
+  const s = typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
+  if (GOOD.test(s)) return `<span class="tag ok">${esc(s)}</span>`;
+  if (BAD.test(s))  return `<span class="tag bad">${esc(s)}</span>`;
+  if (BUSY.test(s)) return `<span class="tag warn">${esc(s)}</span>`;
+  return esc(s);
+}
+function renderTable(d, emptyText){
+  if (d.error) return `<div class="err">The emulator refused this call.<small>${esc(d.error)}</small></div>`;
+  if (!d.rows.length) return `<div class="empty">${esc(emptyText || "Nothing here yet.")}</div>`;
+  const numeric = d.columns.map((_, i) => d.rows.every(r => r[i] !== "" && r[i] !== null && !isNaN(Number(r[i]))));
+  const head = d.columns.map((c, i) => `<th class="${numeric[i] ? "num" : ""}">${esc(c)}</th>`).join("");
+  const body = d.rows.map(r => {
+    const key = d.drill ? ` class="link" data-key="${esc(r[d.key_col ?? 0])}"` : "";
+    return `<tr${key}>` + r.map((v, i) => `<td class="${numeric[i] ? "num" : ""}">${cell(v)}</td>`).join("") + "</tr>";
+  }).join("");
+  return `<div class="scroll"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+async function show(id, key, parent){
+  current = {id, key: key || null, parent: parent || null};
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.id === (parent ? parent.id : id)));
+  if (id === "athena_console") return showConsole();
+  const v = views.find(x => x.id === (parent ? parent.id : id));
+  $("title").textContent = key ? key : v.label;
+  $("crumb").innerHTML = parent ? `in <a id="back">${esc(v.label)}</a>` : "";
+  if (parent) $("back").onclick = () => show(parent.id);
+  $("card").innerHTML = `<div class="empty">Loading…</div>`;
+  const d = await api(`/api/view/${id}` + (key ? `?key=${encodeURIComponent(key)}` : ""));
+  $("card").innerHTML = renderTable(d, key ? "This resource is empty." : `No ${v.label.toLowerCase()} in the emulator yet. Run the notebook to create some.`);
+  $("stamp").textContent = "Updated " + new Date().toLocaleTimeString();
+  if (d.drill) document.querySelectorAll("tr.link").forEach(tr => tr.onclick = () => show(d.drill, tr.dataset.key, {id}));
+}
+
+async function showConsole(){
+  $("title").textContent = "Athena SQL console"; $("crumb").textContent = "";
+  const dbs = await api("/api/view/glue_databases");
+  const options = (dbs.rows || []).map(r => `<option>${esc(r[0])}</option>`).join("");
+  $("card").innerHTML = `<div class="sql">
+      <textarea id="sql" spellcheck="false">SELECT segment, COUNT(*) AS loans, AVG(defaulted) AS default_rate
+FROM loans
+GROUP BY segment
+ORDER BY default_rate DESC</textarea>
+      <div class="row"><label>Database <select id="db">${options || "<option value=''>(none)</option>"}</select></label>
+        <button class="act primary" id="run">Run query</button><span class="note" id="qnote">Ctrl+Enter runs the query. Runs on the emulator's in-process SQL engine, so some Athena syntax may differ.</span></div>
+    </div><div id="result"><div class="empty">Results appear here.</div></div>`;
+  const run = async () => {
+    $("result").innerHTML = `<div class="empty">Running…</div>`;
+    const t0 = performance.now();
+    const d = await api("/api/athena", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({sql: $("sql").value, database: $("db").value})});
+    $("result").innerHTML = renderTable(d, "The query returned no rows.");
+    $("qnote").textContent = d.error ? "Query failed." : `${d.rows.length} row(s) in ${Math.round(performance.now() - t0)} ms`;
+  };
+  $("run").onclick = run;
+  $("sql").onkeydown = e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") run(); };
+}
+
+async function counts(){
+  const c = await api("/api/counts");
+  document.querySelectorAll("nav button .count").forEach(s => { const n = c[s.dataset.id]; s.textContent = n === null || n === undefined ? "–" : n; });
+}
+
+async function init(){
+  const s = await api("/api/status");
+  $("endpoint").textContent = `${s.endpoint} · ${s.region}`;
+  $("pill").className = "pill " + (s.healthy ? "ok" : "bad");
+  $("pilltext").textContent = s.healthy ? "Emulator running" : "Emulator not reachable";
+  views = s.views;
+  let html = "", group = "";
+  for (const v of views){
+    if (v.group !== group){ group = v.group; html += `<div class="group">${esc(group)}</div>`; }
+    html += `<button data-id="${v.id}"><span>${esc(v.label)}</span><span class="count" data-id="${v.id}"></span></button>`;
+    if (v.id === "athena_history") html += `<button data-id="athena_console"><span>Athena SQL console</span><span></span></button>`;
+  }
+  $("nav").innerHTML = html;
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.id));
+  $("refresh").onclick = () => { show(current.id, current.key, current.parent); counts(); };
+  if (!s.healthy){ $("title").textContent = "Emulator not reachable"; $("card").innerHTML =
+    `<div class="err">Nothing answered at ${esc(s.endpoint)}.<small>Start the emulator, then press Refresh. See README.md, step 1.</small></div>`; return; }
+  show(views[0].id); counts();
+}
+init();
+</script>
+</body>
+</html>
