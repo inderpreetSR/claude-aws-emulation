@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>VPC Gatehouse</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a night-time VPC town. 3D districts on the left, the packet's paperwork (checkpoints, rules, trace, quiz) on the right. One deliberate dark look, shared with STS Ticket Hall. */
+:root{
+  --hall:#111a2c; --panel:#18243b; --panel-2:#1f2e4a; --line:#2c3d5e;
+  --ink:#e8edf5; --muted:#9aaac2;
+  --brass:#d9ad55; --paper:#efe5cc; --paper-ink:#2a2418;
+  --go:#46b984; --stop:#e0564a; --wait:#e6b84f;
+  --display:"Big Shoulders Display", "Arial Narrow", sans-serif;
+  --body:"Archivo", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--hall);color:var(--ink);font:15px/1.5 var(--body)}
+.wrap{padding-block:14px 28px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));max-width:1360px;margin:0 auto}
+.topbar{display:flex;align-items:center;gap:16px 24px;flex-wrap:wrap;margin-bottom:14px}
+.brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand h1{font:800 34px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0;color:var(--brass)}
+.brand span{color:var(--muted);font-size:13px}
+.spacer{flex:1}
+.xp{display:flex;align-items:center;gap:10px;min-width:220px}
+.xp label{font:600 12px var(--mono);letter-spacing:.08em;color:var(--muted)}
+.xpbar{flex:1;height:10px;border-radius:6px;background:var(--panel-2);overflow:hidden;border:1px solid var(--line)}
+.xpbar i{display:block;height:100%;width:0;background:var(--brass);transition:width .6s ease}
+.xp b{font:600 13px var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);min-width:72px;text-align:right}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{font:600 11px var(--mono);letter-spacing:.04em;padding:3px 8px;border-radius:999px;border:1px dashed var(--line);color:var(--muted)}
+.badge.won{border-style:solid;border-color:var(--brass);color:var(--brass)}
+
+.layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+.stage{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#0b1220;height:min(78vh,720px);min-height:420px}
+.stage canvas{display:block;width:100%;height:100%;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.caption{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:10px;
+  background:rgba(13,20,34,.86);border:1px solid var(--line);font-size:14px}
+.caption .num{font:800 20px/1 var(--display);color:var(--brass);min-width:24px}
+.hint{position:absolute;top:10px;right:12px;font:500 11px var(--mono);color:var(--muted);background:rgba(13,20,34,.7);padding:3px 8px;border-radius:6px}
+.nogl{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted)}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.levels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.lv{border:1px solid var(--line);background:var(--panel-2);color:var(--ink);border-radius:10px;padding:7px 6px;font:600 12px var(--mono);cursor:pointer;text-align:center}
+.lv small{display:block;font:500 10px var(--mono);color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv.on{border-color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass)}
+.lv.done small{color:var(--go)}
+.lv:disabled{opacity:.45;cursor:not-allowed}
+.lv:focus-visible,.btn:focus-visible,.opt:focus-visible,.copy:focus-visible,summary:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+h2{font:800 26px/1.05 var(--display);letter-spacing:.03em;text-transform:uppercase;margin:0;text-wrap:balance}
+.call{font:600 12px var(--mono);color:var(--brass);letter-spacing:.06em}
+.mission{margin:0;color:var(--ink);max-width:62ch}
+.btn{appearance:none;border:0;border-radius:10px;padding:12px 16px;font:700 15px var(--body);cursor:pointer;background:var(--brass);color:#1d1606}
+.btn:disabled{opacity:.5;cursor:wait}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:4px;counter-reset:s}
+.steps li{counter-increment:s;display:flex;gap:10px;padding:6px 10px;border-radius:8px;color:var(--muted);font-size:14px}
+.steps li::before{content:counter(s);font:800 16px/1.3 var(--display);color:var(--line);min-width:14px}
+.steps li.now{background:var(--panel-2);color:var(--ink)}
+.steps li.now::before{color:var(--brass)}
+.steps li.past{color:var(--ink)}
+.steps li.past::before{color:var(--go)}
+.label{font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.code{background:#0d1525;border:1px solid var(--line);border-radius:10px;overflow-x:auto;font:13px/1.65 var(--mono);padding:8px 0}
+.code div{padding:0 12px;white-space:pre;color:#b9c6da;border-left:3px solid transparent}
+.code div.hl{background:rgba(217,173,85,.13);border-left-color:var(--brass);color:var(--ink)}
+.code .c{color:#7f8fa8}
+
+.ticket{position:relative;background:var(--paper);color:var(--paper-ink);border-radius:8px;padding:14px 16px 14px 22px;font:13px/1.45 var(--mono);
+  box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.ticket::before{content:"";position:absolute;left:8px;top:10px;bottom:10px;border-left:2px dotted rgba(42,36,24,.35)}
+.ticket h3{font:800 20px/1 var(--display);letter-spacing:.08em;margin:0 0 8px;text-transform:uppercase}
+.ticket dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 12px;margin:0}
+.ticket dt{color:rgba(42,36,24,.65)}
+.ticket dd{margin:0;overflow-wrap:anywhere;font-weight:600}
+.stamp{position:absolute;right:12px;top:10px;font:800 18px/1 var(--display);letter-spacing:.12em;padding:4px 8px;border:3px solid;border-radius:6px;transform:rotate(-8deg)}
+.stamp.ok{color:#1f7a50;border-color:#1f7a50}
+.stamp.no{color:#b3352a;border-color:#b3352a}
+.ticket.expired{filter:grayscale(1) opacity(.6)}
+.ticket .note{margin:8px 0 0;font:12px/1.4 var(--body);color:rgba(42,36,24,.75)}
+
+.quiz{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--panel-2);display:grid;gap:8px}
+.quiz p{margin:0;font-weight:600}
+.opt{appearance:none;text-align:left;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:9px 12px;font:500 14px var(--body);cursor:pointer}
+.opt.right{border-color:var(--go);color:var(--go)}
+.opt.wrong{border-color:var(--stop);color:var(--stop)}
+.why{margin:0;font-size:14px;color:var(--muted)}
+.why.good{color:var(--go)}
+details{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#141f33}
+summary{cursor:pointer;font-weight:600}
+details .code{margin-top:10px}
+.out{margin-top:8px;font:12.5px/1.5 var(--mono);color:var(--go);background:#0d1525;border:1px solid var(--line);border-radius:10px;padding:8px 12px;overflow-x:auto;white-space:pre}
+.copy{appearance:none;margin-top:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:6px 10px;font:600 12px var(--mono);cursor:pointer}
+.muted{color:var(--muted);font-size:13px;margin:0}
+.done-card{border:1px solid var(--brass);border-radius:12px;padding:14px;background:var(--panel-2)}
+.done-card h3{font:800 22px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--brass);margin:0 0 8px}
+.done-card ul{margin:0;padding-left:18px;display:grid;gap:4px}
+
+@media (max-width:900px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .stage{height:clamp(300px,62vw,460px);min-height:0}
+  .brand h1{font-size:28px}
+}
+@media (max-width:460px){ .levels{grid-template-columns:repeat(2,minmax(0,1fr))} .xp{min-width:0;width:100%} }
+@media (prefers-reduced-motion: reduce){ .xpbar i{transition:none} }
+
+.packet{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.packet div{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;min-width:0}
+.packet span{display:block;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.packet b{display:block;font:600 13px var(--mono);overflow-wrap:anywhere}
+.trace{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0d1525}
+.trace-head{display:flex;flex-direction:column;gap:2px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.trace-head b{font:800 22px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.trace-head span{font-size:13px;color:var(--muted)}
+.trace-head.ok b{color:var(--go)} .trace-head.no b{color:var(--stop)} .trace-head.mixed b{color:var(--wait)}
+.trace ol{list-style:none;margin:0;padding:8px 10px;display:grid;gap:4px}
+.trace li{display:flex;gap:10px;font-size:13.5px;padding:4px 4px}
+.trace li i{font-style:normal;font:700 14px var(--mono);min-width:16px;text-align:center}
+.trace li.allow i{color:var(--go)} .trace li.deny i{color:var(--stop)} .trace li.auto i{color:#7cc4ff} .trace li.pass i{color:var(--muted)}
+.trace li.deny span{color:#ffb3ac}
+code{font:12.5px var(--mono);background:var(--panel-2);padding:1px 5px;border-radius:5px}
+@media (max-width:460px){ .packet{grid-template-columns:minmax(0,1fr)} }
+.worlds{display:flex;gap:6px 8px;flex-wrap:wrap;align-items:center;margin:-4px 0 14px}
+.worlds span{font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.worlds a{font:600 13px var(--body);color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--panel)}
+.worlds a:hover{border-color:var(--brass)}
+.worlds a[aria-current="page"]{border-color:var(--brass);color:var(--brass)}
+.worlds a:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><h1>VPC Gatehouse</h1><span>Inbound and outbound traffic, one packet at a time. Every decision uses the rules AWS Emulator stored in the aws-basics lab.</span></div>
+    <div class="spacer"></div>
+    <div class="xp"><label>XP</label><div class="xpbar"><i id="xpfill"></i></div><b id="xptext">0 / 500</b></div>
+    <div class="badges" id="badges"></div>
+  </header>
+  <nav class="worlds" aria-label="Learning worlds"><span>Worlds</span><a href="https://claude.ai/artifact/AtEd5LWk1S4bih3YQCExgM" target="_blank" rel="noopener">1 · STS Ticket Hall</a><a href="https://claude.ai/artifact/XZDHJ2xqtCfapFWYJ3NQMv" target="_blank" rel="noopener">2 · IAM Permission Vault</a><a href="https://claude.ai/artifact/JHd4PAsDD1dd3vn1jmsmho" aria-current="page" target="_blank" rel="noopener">3 · VPC Gatehouse</a></nav>
+
+  <main class="layout">
+    <section class="stage" id="stage" aria-label="3D VPC town">
+      <span class="hint">Drag to look around</span>
+      <div class="caption" id="caption"><span class="num" id="capnum">·</span><span id="captext">Pick a level, then send the packet.</span></div>
+    </section>
+
+    <aside class="panel">
+      <nav class="levels" id="levels" aria-label="Levels"></nav>
+      <div><div class="call" id="call"></div><h2 id="ltitle"></h2></div>
+      <p class="mission" id="mission"></p>
+      <div class="packet" id="packet"></div>
+      <div class="row"><button class="btn" id="go" type="button">Send the packet</button><button class="btn ghost" id="again" type="button" hidden>Watch again</button></div>
+      <div><p class="label">Checkpoints on the way</p><ol class="steps" id="steps"></ol></div>
+      <div><p class="label">The rule that decides it</p><div class="code" id="code"></div></div>
+      <div id="tracebox" hidden></div>
+      <div class="quiz" id="quiz" hidden></div>
+      <details id="jupyter">
+        <summary>Try it in Jupyter</summary>
+        <p class="muted" style="margin-top:8px">Open <code>labs/aws-basics/lab.ipynb</code>, run it down to part 4.3, then add this cell:</p>
+        <div class="code" id="jcode"></div>
+        <button class="copy" id="copy" type="button">Copy code</button>
+        <p class="label" style="margin-top:10px">What it printed against the emulator</p>
+        <div class="out" id="jout"></div>
+      </details>
+    </aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SPEED = REDUCED ? 0.35 : 1;
+
+// ------------------------------------------------------------------ rules as stored in the emulator (aws-basics lab, part 4)
+const PUBLIC_ACL = [
+  ["in", 90, "DENY", "all", "all", "203.0.113.0/24"], ["in", 100, "ALLOW", "tcp", "443", "0.0.0.0/0"], ["in", "*", "DENY", "all", "all", "0.0.0.0/0"],
+  ["out", 100, "ALLOW", "tcp", "1024-65535", "0.0.0.0/0"], ["out", 110, "ALLOW", "tcp", "8080", "10.0.0.0/16"], ["out", "*", "DENY", "all", "all", "0.0.0.0/0"]];
+const PUBLIC_ACL_BROKEN = PUBLIC_ACL.filter(r => !(r[0] === "out" && r[1] === 100));
+const WEB_SG = [["in", "tcp", "443", "0.0.0.0/0"], ["out", "all", "all", "0.0.0.0/0"]];
+const DB_SG = [["in", "tcp", "5432", "app-sg"]];
+
+// checkpoint kinds: igw | nacl | sg | arrive
+const LEVELS = [
+  { key: "https", short: "Website visit", title: "Customer opens the website", call: "Inbound HTTPS",
+    mission: "A customer's browser connects to web-1 on port 443. Follow the request in, then the reply back out. Watch which checkpoints look at the reply and which don't.",
+    packet: { from: "198.51.100.7 : 51000", to: "web-1  10.0.1.7 : 443", proto: "TCP 443 (HTTPS)" },
+    acl: PUBLIC_ACL, route: "internet-web", reply: true,
+    checks: [
+      { at: "igw", v: "pass", text: "Internet gateway: lets traffic into the VPC. It routes, it doesn't filter." },
+      { at: "nacl", dir: "in", rule: 100, v: "allow", text: "public-acl inbound: rule 100 allows TCP 443 from 0.0.0.0/0." },
+      { at: "sgweb", v: "allow", text: "web-sg inbound: allows TCP 443 from 0.0.0.0/0." },
+      { at: "web", v: "arrive", text: "web-1 receives the request and sends the page back." },
+      { at: "sgweb", v: "auto", text: "web-sg: the reply leaves without any rule check. Security groups are stateful: they remember the connection." },
+      { at: "nacl", dir: "out", rule: 100, v: "allow", text: "public-acl outbound: checked again. Rule 100 allows TCP 1024-65535, which covers the browser's port 51000." },
+      { at: "client", v: "arrive", text: "The customer sees the page." }],
+    code: ['# security group: one rule, replies are automatic', 'ec2.authorize_security_group_ingress(GroupId=web_sg, IpPermissions=[{', '    "IpProtocol": "tcp", "FromPort": 443, "ToPort": 443,', '    "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}])', '# network ACL: needs BOTH directions', 'entry(100, False, "allow", "0.0.0.0/0", (443, 443))     # in', 'entry(100, True,  "allow", "0.0.0.0/0", (1024, 65535)) # out'],
+    codeFor: [-1, 5, 1, -1, 0, 6, -1],
+    jupyter: ['row = check_inbound("Website visit", src_ip="198.51.100.7", src_port=51000, dst_port=443,', '                    protocol="tcp", target_sg=web, target_acl=public_acl)', 'row'],
+    output: "NACL inbound: allow (rule 100)  |  security group: allow (tcp 443 from 0.0.0.0/0)\nNACL outbound (reply): allow (rule 100)  |  result: Allowed",
+    verdict: ["ok", "Delivered", "Request in, reply out. Four checks, two of them by the network ACL."],
+    quiz: { q: "The network ACL needed an outbound rule for the reply, but web-sg did not. Why?", options: [
+      ["Security groups remember allowed connections; network ACLs don't", true, "Correct. Security groups are stateful. Network ACLs are stateless, so every packet is judged on its own, in both directions."],
+      ["The reply was too small to check", false, "Size never matters. It's about whether the checkpoint remembers the connection."],
+      ["Network ACLs only work outbound", false, "They check both directions. That's exactly why the reply needed its own rule."]] },
+    badge: "Stateful door" },
+
+  { key: "ssh", short: "SSH attempt", title: "Someone tries SSH", call: "Inbound port 22",
+    mission: "Someone on the internet tries to log in to web-1 over SSH, port 22. Nobody wrote a rule for that.",
+    packet: { from: "198.51.100.7 : 51001", to: "web-1  10.0.1.7 : 22", proto: "TCP 22 (SSH)" },
+    acl: PUBLIC_ACL, route: "internet-web", reply: false, stopAt: 1,
+    checks: [
+      { at: "igw", v: "pass", text: "Internet gateway: lets the packet into the VPC." },
+      { at: "nacl", dir: "in", rule: "*", v: "deny", text: "public-acl inbound: rules 90 and 100 don't match port 22, so the final * rule denies it." }],
+    code: ['# nothing to write: anything not allowed is denied', '# public-acl inbound ends with   *  DENY  all  0.0.0.0/0', '# web-sg has no rule for port 22 either'],
+    codeFor: [-1, 1],
+    jupyter: ['check_inbound("SSH attempt", src_ip="198.51.100.7", src_port=51001, dst_port=22,', '              protocol="tcp", target_sg=web, target_acl=public_acl)'],
+    output: "NACL inbound: deny (rule 32767)  |  security group: no matching rule\nresult: Blocked by NACL inbound rule 32767",
+    verdict: ["no", "Blocked", "Stopped at the district gate. It never reached web-1's door, which would have refused it too."],
+    quiz: { q: "Which rule blocked the SSH packet?", options: [
+      ["The network ACL's final * rule", true, "Correct. Every network ACL ends with * DENY. In the API it's rule number 32767."],
+      ["A deny rule in web-sg", false, "Security groups can't contain deny rules. They only allow; anything not allowed is refused."],
+      ["The internet gateway", false, "The internet gateway only routes traffic. It has no rules."]] },
+    badge: "Default deny" },
+
+  { key: "order", short: "Rule order", title: "A blocked address range", call: "NACL rule order",
+    mission: "A request comes from 203.0.113.9, an address range the bank has blocked. Rule 100 would allow HTTPS from anywhere, but rule 90 sits in front of it.",
+    packet: { from: "203.0.113.9 : 51002", to: "web-1  10.0.1.7 : 443", proto: "TCP 443 (HTTPS)" },
+    acl: PUBLIC_ACL, route: "internet-web", reply: false, stopAt: 1,
+    checks: [
+      { at: "igw", v: "pass", text: "Internet gateway: lets the packet into the VPC." },
+      { at: "nacl", dir: "in", rule: 90, v: "deny", text: "public-acl inbound: rule 90 matches first and denies 203.0.113.0/24. Rule 100 is never reached." }],
+    code: ['entry(90,  False, "deny",  "203.0.113.0/24", proto="-1")   # checked first', 'entry(100, False, "allow", "0.0.0.0/0", (443, 443))       # never reached'],
+    codeFor: [-1, 0],
+    jupyter: ['check_inbound("HTTPS from the blocked range", src_ip="203.0.113.9", src_port=51002, dst_port=443,', '              protocol="tcp", target_sg=web, target_acl=public_acl)'],
+    output: "NACL inbound: deny (rule 90)  |  security group: allow (tcp 443 from 0.0.0.0/0)\nresult: Blocked by NACL inbound rule 90",
+    verdict: ["no", "Blocked", "web-sg would have allowed it, but the network ACL stopped it first."],
+    quiz: { q: "Rule 100 allows HTTPS from everywhere, yet this packet was blocked. Why?", options: [
+      ["Network ACL rules run lowest number first, and the first match wins", true, "Correct. Rule 90 matched and decided. Leave gaps in your numbering (90, 100, 110) so you can slot rules in later."],
+      ["A deny always beats an allow", false, "That's how IAM policies work. Network ACLs go strictly by rule order."],
+      ["web-sg blocked it", false, "web-sg would have allowed it. The packet never got that far."]] },
+    badge: "Order matters" },
+
+  { key: "ephemeral", short: "Missing reply rule", title: "The forgotten reply rule", call: "Ephemeral ports",
+    mission: "Someone tidied up public-acl and deleted outbound rule 100. Send the same website request as level 1.",
+    packet: { from: "198.51.100.7 : 51000", to: "web-1  10.0.1.7 : 443", proto: "TCP 443 (HTTPS)" },
+    acl: PUBLIC_ACL_BROKEN, route: "internet-web", reply: true, stopAt: 5,
+    checks: [
+      { at: "igw", v: "pass", text: "Internet gateway: lets traffic into the VPC." },
+      { at: "nacl", dir: "in", rule: 100, v: "allow", text: "public-acl inbound: rule 100 still allows TCP 443." },
+      { at: "sgweb", v: "allow", text: "web-sg inbound: allows TCP 443." },
+      { at: "web", v: "arrive", text: "web-1 receives the request and replies." },
+      { at: "sgweb", v: "auto", text: "web-sg: lets the reply out (stateful)." },
+      { at: "nacl", dir: "out", rule: "*", v: "deny", text: "public-acl outbound: no rule allows port 51000 any more, so * denies the reply. The customer waits, then times out." }],
+    code: ['ec2.delete_network_acl_entry(NetworkAclId=acl, RuleNumber=100, Egress=True)', '# requests still arrive; replies can no longer leave'],
+    codeFor: [-1, -1, -1, -1, -1, 0],
+    jupyter: ['ec2.delete_network_acl_entry(NetworkAclId=acl, RuleNumber=100, Egress=True)', 'broken = ec2.describe_network_acls(NetworkAclIds=[acl])["NetworkAcls"][0]', 'check_inbound("Website, no ephemeral rule", src_ip="198.51.100.7", src_port=51000, dst_port=443,', '              protocol="tcp", target_sg=web, target_acl=broken)'],
+    output: "NACL inbound: allow (rule 100)  |  security group: allow (tcp 443 from 0.0.0.0/0)\nNACL outbound (reply): deny (rule 32767)  |  result: Request arrives, reply blocked by NACL outbound rule 32767",
+    verdict: ["no", "Timed out", "The server did its job. The customer never saw the answer. This is one of the most common network mistakes."],
+    quiz: { q: "Customers see timeouts after one outbound rule was deleted. What's missing?", options: [
+      ["An outbound rule for the client's ephemeral ports, 1024-65535", true, "Correct. Browsers reply-listen on a random high port, so stateless network ACLs must allow that range outbound."],
+      ["An inbound rule for port 443", false, "Inbound 443 is still there: the request reached web-1."],
+      ["An outbound rule in web-sg", false, "web-sg is stateful and let the reply out. The network ACL stopped it."]] },
+    badge: "Ephemeral ports" },
+
+  { key: "tiers", short: "Tier to tier", title: "Who may reach the database?", call: "Security group references",
+    mission: "loan-db accepts PostgreSQL (5432) only from members of app-sg. First the scoring service connects, then web-1 tries to skip a tier.",
+    packet: { from: "scoring-1 (app-sg), then web-1 (web-sg)", to: "loan-db  10.0.11.30 : 5432", proto: "TCP 5432 (PostgreSQL)" },
+    acl: null, route: "tiers", reply: false,
+    checks: [
+      { at: "scoring", v: "pass", text: "scoring-1 (in app-sg) connects to loan-db. Both sit in private-a, and traffic inside one subnet doesn't pass a network ACL." },
+      { at: "sgdb", v: "allow", text: "db-sg inbound: allows TCP 5432 from app-sg. scoring-1 is a member, so it's in." },
+      { at: "web2", v: "pass", text: "web-1 (in web-sg) now tries the same port. It crosses from public-a into private-a; both network ACLs allow it." },
+      { at: "sgdb2", v: "deny", text: "db-sg inbound: no rule mentions web-sg. Blocked at the database's door." }],
+    code: ['ec2.authorize_security_group_ingress(GroupId=db_sg, IpPermissions=[{', '    "IpProtocol": "tcp", "FromPort": 5432, "ToPort": 5432,', '    "UserIdGroupPairs": [{"GroupId": app_sg}]}])   # members of app-sg, any IP'],
+    codeFor: [-1, 2, -1, 2],
+    jupyter: ['db = ec2.describe_security_groups(GroupIds=[db_sg])["SecurityGroups"][0]', 'pd.DataFrame([', '  check_inbound("Scoring service -> database", src_ip="10.0.11.20", src_port=40000, dst_port=5432,', '                protocol="tcp", target_sg=db, target_acl=default_acl, src_groups=[app_sg]),', '  check_inbound("Web server -> database", src_ip="10.0.1.15", src_port=40001, dst_port=5432,', '                protocol="tcp", target_sg=db, target_acl=default_acl, src_groups=[web_sg])])'],
+    output: "Scoring service -> database   security group: allow (tcp 5432 from app-sg)   result: Allowed\nWeb server -> database        security group: no matching rule               result: Blocked",
+    verdict: ["mixed", "1 allowed, 1 blocked", "Same port, same database. Group membership made the difference, not IP addresses."],
+    quiz: { q: "How does db-sg let in only the scoring service?", options: [
+      ["It names app-sg as the source, so any member is allowed", true, "Correct. A group reference keeps working when instances are replaced and their IP addresses change."],
+      ["It lists scoring-1's IP address", false, "That would work until scoring-1 is replaced and gets a new address. Group references avoid that."],
+      ["The private subnet's network ACL blocks web-1", false, "Both network ACLs allowed web-1's packet. db-sg made the decision."]] },
+    badge: "Group references" }
+];
+const TOTAL = LEVELS.length * 100;
+
+let state = { xp: 0, unlocked: 1, done: {}, current: 0 };
+try { const s = JSON.parse(localStorage.getItem("vpc-gatehouse") || "null"); if (s) state = { ...state, ...s }; } catch (e) {}
+const save = () => { try { localStorage.setItem("vpc-gatehouse", JSON.stringify(state)); } catch (e) {} };
+
+const tweens = new Set();
+const ease = k => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+const lerp = (a, b, k) => a + (b - a) * k;
+const tween = (ms, fn) => new Promise(res => tweens.add({ t0: performance.now(), dur: Math.max(1, ms * SPEED), fn, res }));
+const wait = ms => tween(ms, () => {});
+
+// ------------------------------------------------------------------ 3D town
+const stage = $("stage");
+let renderer = null, scene, camera, W = 0, H = 0;
+const S = {};
+let theta = 0.05, targetTheta = 0.05, drag = null;
+const P = {   // waypoints, y is packet height
+  client: [-10.4, .9, 2.2], igw: [-7.6, .9, 2.2], nacl: [-5.6, .9, 2.2], sgweb: [-3.25, .9, 1.6], web: [-2.2, .9, 1.6],
+  scoring: [2.1, .9, .2], db: [4.6, .9, 2.9], sgdb: [3.65, .9, 2.9],
+  web2: [-2.2, .9, 2.4], pubEast: [-.55, .9, 2.9], privWest: [.55, .9, 2.9] };
+const V = a => new THREE.Vector3(a[0], a[1], a[2]);
+
+function tex(w, h, draw) { const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); draw(g, w, h); const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return { tex: t, canvas: c, g }; }
+function redraw(o, draw) { draw(o.g, o.canvas.width, o.canvas.height); o.tex.needsUpdate = true; }
+function label(text, color, scale = 1) {
+  const cw = Math.max(512, Math.ceil(text.length * 24 + 60));
+  const o = tex(cw, 96, (g, w, h) => { g.fillStyle = "rgba(13,20,34,.86)"; g.fillRect(0, 0, w, h); g.fillStyle = color; g.font = "600 38px 'IBM Plex Mono', monospace"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, w / 2, h / 2 + 2); });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: o.tex, transparent: true, depthTest: false })); s.scale.set(2.4 * scale * cw / 512, .45 * scale, 1); s.userData.o = o; return s;
+}
+function drawAcl(g, w, h, rules, title, hl) {
+  g.fillStyle = "#0f1a2e"; g.fillRect(0, 0, w, h); g.strokeStyle = "#2c3d5e"; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6);
+  g.fillStyle = "#d9ad55"; g.font = "800 40px 'Big Shoulders Display', sans-serif"; g.textBaseline = "top"; g.fillText(title, 20, 14);
+  g.font = "500 22px 'IBM Plex Mono', monospace";
+  let y = 66;
+  if (!rules) { g.fillStyle = "#9aaac2"; g.fillText("default ACL: allow all, both ways", 20, y); return; }
+  for (const dir of ["in", "out"]) {
+    g.fillStyle = "#9aaac2"; g.fillText(dir === "in" ? "INBOUND" : "OUTBOUND", 20, y); y += 30;
+    for (const r of rules.filter(r => r[0] === dir)) {
+      const isHl = hl && hl.dir === dir && String(hl.rule) === String(r[1]);
+      if (isHl) { g.fillStyle = hl.v === "allow" ? "rgba(70,185,132,.3)" : "rgba(224,86,74,.3)"; g.fillRect(12, y - 4, w - 24, 30); }
+      g.fillStyle = r[2] === "DENY" ? "#ff8f86" : "#e8edf5";
+      g.fillText(`${String(r[1]).padStart(3)}  ${r[2].padEnd(5)} ${r[3].padEnd(4)} ${r[4].padEnd(10)} ${r[5]}`, 20, y); y += 30;
+    }
+    y += 8;
+  }
+}
+function drawSg(g, w, h, name, rules, hl) {
+  g.fillStyle = "#0f1a2e"; g.fillRect(0, 0, w, h); g.strokeStyle = hl === "deny" ? "#e0564a" : hl === "allow" ? "#46b984" : hl === "auto" ? "#5aa0e6" : "#2c3d5e"; g.lineWidth = 8; g.strokeRect(4, 4, w - 8, h - 8);
+  g.fillStyle = "#d9ad55"; g.font = "800 40px 'Big Shoulders Display', sans-serif"; g.textBaseline = "top"; g.fillText(name + "  (door guard)", 20, 14);
+  g.font = "500 24px 'IBM Plex Mono', monospace"; let y = 70;
+  for (const r of rules) { g.fillStyle = "#e8edf5"; g.fillText(`${r[0] === "in" ? "IN " : "OUT"}  ALLOW ${r[1]} ${r[2]} ${r[3]}`, 20, y); y += 32; }
+  if (hl === "auto") { g.fillStyle = "#7cc4ff"; g.fillText("reply: remembered, no check", 20, y + 4); }
+}
+function building(w, h, d, color) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: .6 })); m.castShadow = m.receiveShadow = true; m.position.y = h / 2 + .2; return m;
+}
+function pad(x, z, w, d, color) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, .14, d), new THREE.MeshStandardMaterial({ color, roughness: .9, transparent: true, opacity: .9 })); m.position.set(x, .27, z); m.receiveShadow = true; return m;
+}
+
+function buildScene() {
+  try { renderer = new THREE.WebGLRenderer({ antialias: true }); } catch (e) { renderer = null; }
+  if (!renderer) { stage.insertAdjacentHTML("afterbegin", `<div class="nogl">3D needs WebGL, which this browser has turned off. The levels, packet trace and quiz on the right still work.</div>`); return; }
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.shadowMap.enabled = true; stage.prepend(renderer.domElement);
+  scene = new THREE.Scene(); scene.background = new THREE.Color(0x0b1220); scene.fog = new THREE.Fog(0x0b1220, 22, 44);
+  camera = new THREE.PerspectiveCamera(42, 1, .1, 120);
+  scene.add(new THREE.HemisphereLight(0xa9bde0, 0x10141f, .6));
+  const sun = new THREE.DirectionalLight(0xffffff, .7); sun.position.set(6, 12, 8); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 12, bottom: -12 }); scene.add(sun);
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 40), new THREE.MeshStandardMaterial({ color: 0x131d31, roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  const vpc = new THREE.Mesh(new THREE.BoxGeometry(14.4, .2, 7.8), new THREE.MeshStandardMaterial({ color: 0x1b2b48, roughness: .8 })); vpc.position.set(-.3, .1, 1.6); vpc.receiveShadow = true; scene.add(vpc);
+  const edge = new THREE.LineSegments(new THREE.EdgesGeometry(vpc.geometry), new THREE.LineBasicMaterial({ color: 0x5aa0e6 })); edge.position.copy(vpc.position); scene.add(edge);
+  const vl = label("VPC  bank-vpc  10.0.0.0/16", "#7cc4ff", 1.1); vl.position.set(-.3, .5, 5.9); scene.add(vl);
+
+  scene.add(pad(-3.05, 1.6, 5, 6.4, 0x1e4a3a)); scene.add(pad(3.05, 1.6, 5, 6.4, 0x4a3420));
+  const pl = label("public-a  10.0.1.0/24", "#7fe0b0"); pl.position.set(-3.05, .6, 4.5); scene.add(pl);
+  const vrl = label("private-a  10.0.11.0/24", "#f0c08a"); vrl.position.set(3.05, .6, 4.5); scene.add(vrl);
+
+  // internet + client
+  const globe = new THREE.Mesh(new THREE.SphereGeometry(1.1, 32, 20), new THREE.MeshStandardMaterial({ color: 0x2a5d8f, wireframe: true })); globe.position.set(-10.4, 2.6, 2.2); scene.add(globe); S.globe = globe;
+  const il = label("Internet", "#7cc4ff"); il.position.set(-10.4, 4.1, 2.2); scene.add(il);
+  const client = building(.9, .7, .6, 0x5aa0e6); client.position.set(-10.4, .55, 2.2); scene.add(client);
+
+  // internet gateway arch
+  const brass = new THREE.MeshStandardMaterial({ color: 0xd9ad55, metalness: .6, roughness: .35 });
+  for (const z of [1.2, 3.2]) { const p = new THREE.Mesh(new THREE.BoxGeometry(.25, 2.2, .25), brass); p.position.set(-7.6, 1.3, z); scene.add(p); }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(.3, .3, 2.3), brass); beam.position.set(-7.6, 2.45, 2.2); scene.add(beam);
+  const gl = label("Internet gateway", "#d9ad55", .8); gl.position.set(-7.6, 3.1, 2.2); scene.add(gl);
+
+  // NACL checkpoint on public-a's west edge
+  const booth = new THREE.Mesh(new THREE.BoxGeometry(.7, 1.3, .8), new THREE.MeshStandardMaterial({ color: 0x2b3a58 })); booth.position.set(-5.6, .95, .9); booth.castShadow = true; scene.add(booth);
+  S.barrier = new THREE.Group(); S.barrier.position.set(-5.6, 1.1, 1.35);
+  S.barrierArm = new THREE.Mesh(new THREE.BoxGeometry(.12, .12, 2.1), new THREE.MeshStandardMaterial({ color: 0xe8edf5, emissive: 0x000000 })); S.barrierArm.position.z = 1.05; S.barrier.add(S.barrierArm); scene.add(S.barrier);
+  S.aclBoard = tex(640, 520, (g, w, h) => drawAcl(g, w, h, PUBLIC_ACL, "public-acl  (gate checkpoint)", null));
+  const ab = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 3.74), new THREE.MeshBasicMaterial({ map: S.aclBoard.tex })); ab.position.set(-6.4, 4.4, -1.6); scene.add(ab);
+  S.aclLight = new THREE.PointLight(0x46b984, 0, 4); S.aclLight.position.set(-5.6, 2.2, 1.6); scene.add(S.aclLight);
+
+  // web-1 with web-sg door
+  scene.add(Object.assign(building(1.6, 1.8, 1.6, 0x34507e), { name: "web" })); scene.children.at(-1).position.set(-2.2, 1.1, 1.6);
+  const wl = label("web-1  10.0.1.7", "#e8edf5", .8); wl.position.set(-2.2, 2.5, 1.6); scene.add(wl);
+  S.webDoor = new THREE.Mesh(new THREE.BoxGeometry(.06, 1, .6), new THREE.MeshStandardMaterial({ color: 0x5aa0e6, emissive: 0x000000 })); S.webDoor.position.set(-3.03, .7, 1.6); scene.add(S.webDoor);
+  S.webSign = tex(560, 220, (g, w, h) => drawSg(g, w, h, "web-sg", WEB_SG, null));
+  const ws = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.41), new THREE.MeshBasicMaterial({ map: S.webSign.tex })); ws.position.set(-1.9, 4.7, -1.6); scene.add(ws);
+
+  // scoring-1 and loan-db
+  const sc = building(1.4, 1.4, 1.2, 0x7a5a2e); sc.position.set(2.1, .9, .2); scene.add(sc);
+  const scl = label("scoring-1  app-sg", "#f0c08a", .8); scl.position.set(2.1, 2.1, .2); scene.add(scl);
+  const db = new THREE.Mesh(new THREE.CylinderGeometry(.7, .7, 1.5, 32), new THREE.MeshStandardMaterial({ color: 0x8a4a3a, roughness: .5 })); db.position.set(4.6, .95, 2.9); db.castShadow = true; scene.add(db);
+  const dbl = label("loan-db  10.0.11.30", "#f0c08a", .8); dbl.position.set(4.6, 2.2, 2.9); scene.add(dbl);
+  S.dbDoor = new THREE.Mesh(new THREE.BoxGeometry(.06, .9, .5), new THREE.MeshStandardMaterial({ color: 0x5aa0e6, emissive: 0x000000 })); S.dbDoor.position.set(3.88, .7, 2.9); scene.add(S.dbDoor);
+  S.dbSign = tex(560, 220, (g, w, h) => drawSg(g, w, h, "db-sg", DB_SG, null));
+  const dsn = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.41), new THREE.MeshBasicMaterial({ map: S.dbSign.tex })); dsn.position.set(2.4, 4.7, -1.6); scene.add(dsn);
+
+  // packet
+  S.packet = new THREE.Mesh(new THREE.SphereGeometry(.22, 24, 16), new THREE.MeshStandardMaterial({ color: 0x7cc4ff, emissive: 0x2a6fb0 }));
+  S.glow = new THREE.PointLight(0x7cc4ff, 1.2, 3); S.packet.add(S.glow); S.packet.visible = false; scene.add(S.packet);
+  S.ptag = label("TCP 443", "#7cc4ff", .6); S.ptag.position.y = .6; S.packet.add(S.ptag);
+
+  const el = renderer.domElement;
+  el.addEventListener("pointerdown", e => { drag = { x: e.clientX, t: targetTheta }; el.setPointerCapture(e.pointerId); });
+  el.addEventListener("pointermove", e => { if (drag) targetTheta = Math.max(-.9, Math.min(.9, drag.t - (e.clientX - drag.x) / 260)); });
+  el.addEventListener("pointerup", () => drag = null);
+  new ResizeObserver(resize).observe(stage); resize();
+}
+function resize() { if (!renderer) return; W = stage.clientWidth; H = stage.clientHeight; renderer.setSize(W, H, false); camera.aspect = W / H; camera.fov = W < 520 ? 60 : 46; camera.updateProjectionMatrix(); }
+
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  for (const tw of [...tweens]) { const k = Math.min(1, (now - tw.t0) / tw.dur); tw.fn(ease(k), k); if (k >= 1) { tweens.delete(tw); tw.res(); } }
+  if (!renderer) return;
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  theta += (targetTheta - theta) * Math.min(1, dt * 6);
+  const sway = REDUCED ? 0 : Math.sin(now / 3600) * .03, r = W < 520 ? 25 : 19.5;
+  camera.position.set(Math.sin(theta + sway) * r - 2.2, 9.6, Math.cos(theta + sway) * r + 1.6);
+  camera.lookAt(-2.2, 2.0, 1.0);
+  if (!REDUCED) S.globe.rotation.y += dt * .3;
+  renderer.render(scene, camera);
+}
+
+// ------------------------------------------------------------------ panel
+function renderLevels() {
+  $("levels").style.gridTemplateColumns = `repeat(${LEVELS.length}, minmax(0,1fr))`;
+  $("levels").innerHTML = LEVELS.map((l, i) => `<button class="lv${i === state.current ? " on" : ""}${state.done[l.key] ? " done" : ""}" type="button" data-i="${i}" ${i >= state.unlocked ? "disabled" : ""} aria-label="Level ${i + 1}: ${esc(l.short)}">L${i + 1}<small>${state.done[l.key] ? "cleared" : i >= state.unlocked ? "locked" : esc(l.short)}</small></button>`).join("");
+  $("levels").querySelectorAll(".lv").forEach(b => b.onclick = () => { if (busy) return; state.current = +b.dataset.i; save(); openLevel(); });
+  const xp = Math.min(TOTAL, state.xp); $("xpfill").style.width = (xp / TOTAL * 100) + "%"; $("xptext").textContent = `${xp} / ${TOTAL}`;
+  $("badges").innerHTML = LEVELS.map(l => `<span class="badge${state.done[l.key] ? " won" : ""}">${esc(l.badge)}</span>`).join("");
+}
+const hlCode = ln => { const i = ln.indexOf("#"); return i < 0 ? esc(ln) : esc(ln.slice(0, i)) + `<span class="c">${esc(ln.slice(i))}</span>`; };
+function renderCode(L, hl) { $("code").innerHTML = L.code.map((ln, i) => `<div class="${i === hl ? "hl" : ""}">${hlCode(ln) || " "}</div>`).join(""); }
+function setStep(L, i) {
+  [...$("steps").children].forEach((li, j) => li.className = j < i ? "past" : j === i ? "now" : "");
+  renderCode(L, i >= 0 && i < L.codeFor.length ? L.codeFor[i] : -1);
+  $("capnum").textContent = i >= 0 && i < L.checks.length ? i + 1 : i >= L.checks.length ? "✓" : "·";
+  $("captext").textContent = i >= 0 && i < L.checks.length ? L.checks[i].text : i >= L.checks.length ? "Done. Read the packet trace on the right, then answer the quick check." : "Press “Send the packet” to start.";
+}
+const MARK = { pass: ["→", "pass"], allow: ["✓", "allow"], deny: ["✗", "deny"], auto: ["↺", "auto"], arrive: ["●", "pass"] };
+function showTrace(L, upto) {
+  const [kind, head, sub] = L.verdict;
+  $("tracebox").hidden = false;
+  $("tracebox").innerHTML = `<p class="label">Packet trace</p><div class="trace"><div class="trace-head ${kind}"><b>${esc(head)}</b><span>${esc(sub)}</span></div>
+    <ol>${L.checks.slice(0, upto).map(c => `<li class="${MARK[c.v][1]}"><i>${MARK[c.v][0]}</i><span>${esc(c.text)}</span></li>`).join("")}</ol></div>`;
+}
+function showQuiz(L, i) {
+  const q = $("quiz"); q.hidden = false;
+  q.innerHTML = `<p class="label" style="margin:0">Quick check · +100 XP</p><p>${esc(L.quiz.q)}</p>` + L.quiz.options.map(([t], j) => `<button class="opt" type="button" data-j="${j}">${esc(t)}</button>`).join("") + `<p class="why" id="why" aria-live="polite">${state.done[L.key] ? "Already cleared. Answer again if you like." : ""}</p><div id="nextwrap"></div>`;
+  q.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+    const [, right, why] = L.quiz.options[+b.dataset.j];
+    b.classList.add(right ? "right" : "wrong"); $("why").textContent = why; $("why").className = "why" + (right ? " good" : "");
+    if (!right) return;
+    q.querySelectorAll(".opt").forEach(o => o.disabled = true);
+    if (!state.done[L.key]) { state.done[L.key] = true; state.xp += 100; state.unlocked = Math.max(state.unlocked, Math.min(LEVELS.length, i + 2)); save(); renderLevels(); }
+    $("nextwrap").innerHTML = i + 1 < LEVELS.length ? `<button class="btn" type="button" id="next">Next: ${esc(LEVELS[i + 1].short)}</button>`
+      : `<div class="done-card"><h3>Gatehouse cleared</h3><ul><li>Security groups: per instance, allow-only, stateful.</li><li>Network ACLs: per subnet, allow and deny, stateless, lowest rule number first.</li><li>Stateless means replies need their own rule: ephemeral ports 1024-65535.</li><li>Reference security groups instead of IP addresses between tiers.</li></ul></div>`;
+    const n = $("next"); if (n) n.onclick = () => { state.current = i + 1; save(); openLevel(); };
+  });
+}
+let busy = false;
+function openLevel() {
+  const i = state.current, L = LEVELS[i];
+  renderLevels();
+  $("call").textContent = `Level ${i + 1} · ${L.call}`; $("ltitle").textContent = L.title; $("mission").textContent = L.mission;
+  $("packet").innerHTML = `<div><span>From</span><b>${esc(L.packet.from)}</b></div><div><span>To</span><b>${esc(L.packet.to)}</b></div><div><span>Protocol</span><b>${esc(L.packet.proto)}</b></div>`;
+  $("steps").innerHTML = L.checks.map(c => `<li>${esc(c.text.split(":")[0])}</li>`).join("");
+  $("tracebox").hidden = true; $("quiz").hidden = true; $("again").hidden = true; $("go").disabled = false;
+  $("jcode").innerHTML = L.jupyter.map(ln => `<div>${hlCode(ln) || " "}</div>`).join(""); $("jout").textContent = L.output;
+  setStep(L, -1); resetScene(L);
+}
+function resetScene(L) {
+  if (!renderer) return;
+  S.packet.visible = false; S.barrier.rotation.x = 0; S.barrierArm.material.emissive.setHex(0); S.aclLight.intensity = 0;
+  S.webDoor.rotation.y = 0; S.webDoor.material.emissive.setHex(0); S.dbDoor.rotation.y = 0; S.dbDoor.material.emissive.setHex(0);
+  redraw(S.aclBoard, (g, w, h) => drawAcl(g, w, h, L.acl || PUBLIC_ACL, "public-acl  (gate checkpoint)", null));
+  redraw(S.webSign, (g, w, h) => drawSg(g, w, h, "web-sg", WEB_SG, null));
+  redraw(S.dbSign, (g, w, h) => drawSg(g, w, h, "db-sg", DB_SG, null));
+  setPacketLabel(L.packet.proto.split(" (")[0], "#7cc4ff");
+}
+function setPacketLabel(text, color) {
+  if (!renderer) return;
+  redraw(S.ptag.userData.o, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = "rgba(13,20,34,.86)"; g.fillRect(0, 0, w, h); g.fillStyle = color; g.font = "600 38px 'IBM Plex Mono', monospace"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, w / 2, h / 2 + 2); });
+}
+function packetColor(hex) { if (!renderer) return; S.packet.material.color.setHex(hex); S.packet.material.emissive.setHex(hex).multiplyScalar(.4); S.glow.color.setHex(hex); }
+async function move(from, to, ms) {
+  if (!renderer) return wait(ms * .6);
+  const a = V(from), b = V(to);
+  await tween(ms, k => { S.packet.position.lerpVectors(a, b, k); S.packet.position.y = lerp(a.y, b.y, k) + Math.sin(k * Math.PI) * .5; });
+}
+async function bounce() {
+  if (!renderer) return wait(500);
+  const p = S.packet.position.clone();
+  await tween(700, (k, raw) => { S.packet.position.set(p.x - raw * 1.2, p.y + Math.sin(raw * Math.PI) * .8, p.z); S.packet.scale.setScalar(1 - raw * .9); });
+  S.packet.visible = false; S.packet.scale.setScalar(1);
+}
+async function aclCheck(L, c) {
+  if (!renderer) return wait(900);
+  redraw(S.aclBoard, (g, w, h) => drawAcl(g, w, h, L.acl, "public-acl  (gate checkpoint)", { dir: c.dir, rule: c.rule, v: c.v }));
+  S.aclLight.color.setHex(c.v === "allow" ? 0x46b984 : 0xe0564a);
+  await tween(350, k => S.aclLight.intensity = k * 2.4);
+  if (c.v === "allow") await tween(450, k => S.barrier.rotation.x = -k * 1.3);
+  else { S.barrierArm.material.emissive.setHex(0x8a1d14); await wait(600); }
+}
+async function sgCheck(door, sign, name, rules, v) {
+  if (!renderer) return wait(800);
+  redraw(sign, (g, w, h) => drawSg(g, w, h, name, rules, v));
+  door.material.emissive.setHex(v === "deny" ? 0x8a1d14 : v === "auto" ? 0x1f5f9e : 0x1f6f48);
+  if (v !== "deny") await tween(400, k => door.rotation.y = k * 1.2); else await wait(650);
+}
+async function play() {
+  if (busy) return; busy = true;
+  const i = state.current, L = LEVELS[i];
+  $("go").disabled = true; $("again").hidden = true; $("tracebox").hidden = true; $("quiz").hidden = true;
+  resetScene(L);
+  const stopAt = L.stopAt ?? L.checks.length - 1;
+
+  if (L.route === "internet-web") {
+    packetColor(0x7cc4ff);
+    if (renderer) { S.packet.position.copy(V(P.client)); S.packet.visible = true; }
+    for (let s = 0; s < L.checks.length; s++) {
+      const c = L.checks[s]; setStep(L, s);
+      if (c.at === "igw") await move(P.client, P.igw, 1100);
+      else if (c.at === "nacl" && c.dir === "in") { await move(P.igw, P.nacl, 700); await aclCheck(L, c); }
+      else if (c.at === "sgweb" && c.v === "allow") { await move(P.nacl, P.sgweb, 900); await sgCheck(S.webDoor, S.webSign, "web-sg", WEB_SG, "allow"); }
+      else if (c.at === "web") { await move(P.sgweb, P.web, 500); await wait(500); packetColor(0x46b984); setPacketLabel("reply → :51000", "#7fe0b0"); if (renderer) { S.barrier.rotation.x = 0; S.aclLight.intensity = 0; } }
+      else if (c.at === "sgweb" && c.v === "auto") { await move(P.web, P.sgweb, 500); await sgCheck(S.webDoor, S.webSign, "web-sg", WEB_SG, "auto"); }
+      else if (c.at === "nacl" && c.dir === "out") { await move(P.sgweb, P.nacl, 900); await aclCheck(L, c); }
+      else if (c.at === "client") { await move(P.nacl, P.client, 1400); }
+      if (s === stopAt && c.v === "deny") { await bounce(); break; }
+    }
+  } else {   // tiers
+    packetColor(0xf0c08a); setPacketLabel("TCP 5432", "#f0c08a");
+    if (renderer) { S.packet.position.copy(V(P.scoring)); S.packet.visible = true; }
+    setStep(L, 0); await move(P.scoring, [3.0, .9, 2.9], 900);
+    setStep(L, 1); await move([3.0, .9, 2.9], P.sgdb, 400); await sgCheck(S.dbDoor, S.dbSign, "db-sg", DB_SG, "allow"); await move(P.sgdb, P.db, 400); await wait(400);
+    if (renderer) { S.dbDoor.rotation.y = 0; S.dbDoor.material.emissive.setHex(0); S.packet.position.copy(V(P.web2)); }
+    packetColor(0x7cc4ff); setPacketLabel("TCP 5432 from web-sg", "#7cc4ff");
+    setStep(L, 2); await move(P.web2, P.pubEast, 800); await move(P.pubEast, P.privWest, 400); await move(P.privWest, [3.0, .9, 2.9], 700);
+    setStep(L, 3); await move([3.0, .9, 2.9], P.sgdb, 400); await sgCheck(S.dbDoor, S.dbSign, "db-sg", DB_SG, "deny"); await bounce();
+  }
+  showTrace(L, stopAt + 1);
+  setStep(L, L.checks.length);
+  renderCode(L, -1); showQuiz(L, i);
+  $("go").disabled = false; $("again").hidden = false; busy = false;
+}
+
+$("go").onclick = play;
+$("again").onclick = play;
+$("copy").onclick = () => {
+  const text = LEVELS[state.current].jupyter.join("\n");
+  navigator.clipboard.writeText(text).then(() => { $("copy").textContent = "Copied"; setTimeout(() => $("copy").textContent = "Copy code", 1400); })
+    .catch(() => { const r = document.createRange(); r.selectNodeContents($("jcode")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("copy").textContent = "Selected: press Ctrl+C"; });
+};
+if (typeof THREE !== "undefined") buildScene();
+else stage.insertAdjacentHTML("afterbegin", `<div class="nogl">The 3D library could not load. The levels, packet trace and quiz on the right still work.</div>`);
+if (state.current >= state.unlocked) state.current = 0;
+openLevel();
+requestAnimationFrame(loop);
+if (document.fonts && renderer) document.fonts.ready.then(() => { if (!busy) openLevel(); });
+})();
+</script>
+</body>
+</html>
