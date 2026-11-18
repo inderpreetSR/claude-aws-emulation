@@ -40,6 +40,10 @@ STEP_PAUSE=2 python labs/aws-basics/data_science_group.py
 
 `STEP_PAUSE` waits that many seconds at each step so you can follow along. Use the same pattern in your own scripts: call `emu.watch()` once, then `emu.step()` and `emu.say()` to narrate.
 
+## DS Workbench
+
+`ds_workbench.ipynb` is a working notebook for data-science and analytics work, signed in as `ds-user-1` rather than the admin. It reads loan data from S3, queries it with Athena, trains a credit-default model, registers it in SageMaker, follows a training job, batch-scores the loan book and checks the team's guard rails. Run `data_science_group.py` first. Copy it next to your `claude-aws-emulation` folder or open it where it is: it finds `emu.py` either way.
+
 ## Emulator gaps to know
 
 - **SageMaker does not check the caller's IAM permissions** in this emulator build (it does only for lineage reads). The script labels those two results as emulator gaps and shows the policy simulator's verdict, which is what real AWS would decide.
