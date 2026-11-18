@@ -13,7 +13,12 @@ from make_data import loan_book
 LAKE, RESULTS, DB = "bank-lake", "bank-athena-results", "lending"
 ROLE = "lab-service-role"
 FEATURES = ["credit_score", "annual_income", "loan_amount", "dti", "tenure_months", "days_past_due"]
-_GLUE_TYPES = {"int64": "bigint", "float64": "double", "object": "string", "str": "string"}
+
+
+def _glue_type(dtype) -> str:
+    """Glue column type for a pandas column. Goes by kind, because whole numbers are
+    int32 on Windows and int64 elsewhere."""
+    return {"i": "bigint", "u": "bigint", "f": "double", "b": "boolean"}.get(dtype.kind, "string")
 
 
 def attempt(label, fn):
@@ -45,7 +50,7 @@ def ensure_lake(rows: int = 2000) -> pd.DataFrame:
         "Name": "loans", "TableType": "EXTERNAL_TABLE",
         "Parameters": {"classification": "csv", "skip.header.line.count": "1"},
         "StorageDescriptor": {
-            "Columns": [{"Name": c, "Type": _GLUE_TYPES[str(t)]} for c, t in df.dtypes.items()],
+            "Columns": [{"Name": c, "Type": _glue_type(t)} for c, t in df.dtypes.items()],
             "Location": f"s3://{LAKE}/loans/",
             "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
             "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
