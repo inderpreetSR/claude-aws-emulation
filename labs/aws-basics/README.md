@@ -19,7 +19,30 @@ The notebook removes what a previous run built, so you can re-run it as often as
 
 `netcheck.py` contains the traffic evaluator used in part 4. The emulator stores security group and network ACL rules exactly as AWS does but does not move packets, so this module applies AWS's documented evaluation rules to the stored rules. Read it alongside the notebook.
 
+## Data-science team, step by step
+
+`data_science_group.py` builds an IAM group for a data-science team, with a comment on every line:
+
+1. A SageMaker execution role the team may hand to training jobs, and a second role it may not.
+2. A managed policy: read curated loan data, own a sandbox prefix, query with Athena, train with SageMaker, pass only the execution role.
+3. Guard rails as explicit Deny: never delete source data, never touch personal data, never deploy endpoints.
+4. Two users in the group, a policy-simulator review, then ten real attempts signed in as one of the users.
+
+Watch it in the dashboard's Activity monitor. Each call shows as the equivalent AWS CLI command and its result, with secrets redacted:
+
+```bash
+python dashboard/server.py
+```
+
+```bash
+STEP_PAUSE=2 python labs/aws-basics/data_science_group.py
+```
+
+`STEP_PAUSE` waits that many seconds at each step so you can follow along. Use the same pattern in your own scripts: call `emu.watch()` once, then `emu.step()` and `emu.say()` to narrate.
+
 ## Emulator gaps to know
+
+- **SageMaker does not check the caller's IAM permissions** in this emulator build (it does only for lineage reads). The script labels those two results as emulator gaps and shows the policy simulator's verdict, which is what real AWS would decide.
 
 - When a role's trust policy names the whole account (`arn:aws:iam::ACCOUNT:root`), real AWS also requires the caller to hold `sts:AssumeRole` in an identity policy. The emulator skips that check.
 - No virtual machines boot and no packets flow. Instances stay `pending`, and gateways and routes exist as configuration only.
