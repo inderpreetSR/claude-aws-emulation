@@ -24,6 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import emu                                         # our helper: clients that talk to the emulator
+from lab_common import ensure_lake                  # creates the loan-data buckets and Athena table
 from botocore.exceptions import ClientError        # the error boto3 raises when AWS says no
 
 ACCOUNT = "000000000000"                           # the emulator's account number
@@ -39,6 +40,7 @@ IMAGE = "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:1.2
 POLICY_NAME = "DataScienceAccess"
 POLICY_ARN = f"arn:aws:iam::{ACCOUNT}:policy/{POLICY_NAME}"
 
+ensure_lake()                                      # the data this team works on (safe to re-run)
 emu.watch()                                        # start recording for the Activity monitor
 iam = emu.client("iam")                            # IAM client, signed as the emulator's admin
 s3 = emu.client("s3")
