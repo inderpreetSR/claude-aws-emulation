@@ -11,16 +11,17 @@ All labs share one scenario: a synthetic retail-loan book for a bank (generated 
 | Branch | Track | Services | What you practise |
 |---|---|---|---|
 | `main` | Foundation | all | Connection helper, dashboard, GUI tools |
+| `aws-basics` | AWS basics | IAM, STS, VPC, EC2, KMS, S3 | Users, groups, policies and roles; VPCs, subnets and gateways; inbound and outbound rules |
 | `data-analytics` | Data analytics | S3, Glue, Athena, Kinesis | Building a data lake, SQL analysis, streaming |
 | `data-science` | Data science | Athena, S3, DynamoDB | Exploration, model training, online scoring |
 | `mlops` | MLOps | SageMaker, Step Functions, IAM | Job and endpoint APIs, a pipeline with a quality gate |
 | `ai-genai` | AI | Bedrock | Prompts, streaming, tool use, token budgeting |
 | `aiops` | AIOps | CloudWatch, CloudWatch Logs | Drift metrics, alarms, log search |
 
-Suggested order: `data-analytics`, `data-science`, `mlops`, then `ai-genai` and `aiops` in either order. Each lab sets up its own data, so any branch also works on its own.
+Suggested order: start with `aws-basics`, then `data-analytics`, `data-science` and `mlops`, then `ai-genai` and `aiops` in either order. Each lab sets up its own data, so any branch also works on its own.
 
 ```bash
-git switch data-analytics
+git switch aws-basics
 ```
 
 ## Getting started
@@ -54,7 +55,7 @@ jupyter lab labs/
 AWS Emulator has no interface of its own. `main` provides three:
 
 - **Notebooks:** each lab shows results as tables and charts.
-- **Dashboard:** `python dashboard/server.py`, then open http://127.0.0.1:8800. It browses S3, Glue, DynamoDB, SageMaker, Step Functions and CloudWatch, and has an Athena SQL console.
+- **Dashboard:** `python dashboard/server.py`, then open http://127.0.0.1:8800. It browses VPCs, subnets, route tables, security group and network ACL rules, EC2 instances, IAM users, groups, roles and their effective policies, plus S3, Glue, DynamoDB, SageMaker, Step Functions and CloudWatch, and has an Athena SQL console.
 - **Third-party tools:** see `desktop-tools/README.md` for a DynamoDB web browser, Cyberduck settings and the AWS CLI.
 
 ## What is on main
