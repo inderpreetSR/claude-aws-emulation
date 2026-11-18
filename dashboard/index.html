@@ -10,6 +10,7 @@
   --bg:#f6f7f9; --panel:#ffffff; --ink:#16202b; --muted:#5d6b7a; --line:#dfe4ea;
   --accent:#0b6bcb; --accent-ink:#ffffff; --ok:#1a7f4b; --bad:#b3261e; --warn:#8a5a00;
   --row:#f1f4f7; --code:#f1f4f7;
+  --term-bg:#0f1720; --term-ink:#d7dee7; --term-dim:#7d8b99; --term-cmd:#7cc4ff; --term-ok:#6fd49b; --term-bad:#ff8f86; --term-step:#f5c56b;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){--bg:#11161c; --panel:#1a212a; --ink:#e6ebf1; --muted:#98a6b5; --line:#2b3542;
@@ -66,6 +67,18 @@ select,input{background:var(--panel);color:var(--ink);border:1px solid var(--lin
 @media (max-width:760px){.app{grid-template-columns:1fr} aside{position:static;height:auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
   main{padding-block:16px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}}
 .snapnote{font-size:12px;color:var(--muted);margin:0 6px 14px}
+.term{background:var(--term-bg);color:var(--term-ink);font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  padding:14px 16px;height:calc(100vh - 150px);overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.term .t{color:var(--term-dim)} .term .who{color:var(--term-dim)} .term .cmd{color:var(--term-cmd)}
+.term .ok{color:var(--term-ok)} .term .bad{color:var(--term-bad)} .term .step{color:var(--term-step);font-weight:700;display:block;margin-top:12px}
+.term .detail{color:var(--term-dim);display:block} .term .res{color:var(--term-dim)}
+.term .line{display:block;margin-bottom:6px}
+.term .says{color:var(--term-ink);font-weight:700}
+.livebar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line)}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.live .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+@media (prefers-reduced-motion: no-preference){ .live.on .dot{animation:blink 1.2s infinite} }
+@keyframes blink{50%{opacity:.25}}
 </style>
 </head>
 <body>
@@ -127,6 +140,7 @@ async function show(id, key, parent){
   current = {id, key: key || null, parent: parent || null};
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.id === (parent ? parent.id : id)));
   if (id === "athena_console") return showConsole();
+  if (id === "activity") return showActivity();
   const v = views.find(x => x.id === (parent ? parent.id : id));
   $("title").textContent = key ? key : v.label;
   $("crumb").innerHTML = parent ? `in <a id="back">${esc(v.label)}</a>` : "";
@@ -136,6 +150,42 @@ async function show(id, key, parent){
   $("card").innerHTML = renderTable(d, key ? "This resource is empty." : `No ${v.label.toLowerCase()} in the emulator yet. Run the notebook to create some.`);
   $("stamp").textContent = SNAP ? "" : "Updated " + new Date().toLocaleTimeString();
   if (d.drill) document.querySelectorAll("tr.link").forEach(tr => tr.onclick = () => show(d.drill, tr.dataset.key, {id}));
+}
+
+let activityTimer = null, activityNext = 0;
+function fmtEntry(e){
+  const t = `<span class="t">${esc(e.time)}</span> `;
+  if (e.kind === "step") return `<span class="step">▸ ${esc(e.text)}</span>` + (e.detail ? `<span class="detail">${esc(e.detail)}</span>` : "");
+  if (e.kind === "info") return `<span class="line says">${t}${esc(e.text)}</span>`;
+  const who = `<span class="who">[${esc(e.who)}]</span> `;
+  const head = `${t}${who}<span class="cmd">$ ${esc(e.cli)}</span>`;
+  if (e.kind === "call") {
+    let res = JSON.stringify(e.result ?? {});
+    if (res.length > 160) res = res.slice(0, 160) + " …";
+    return `<span class="line">${head}\n   <span class="ok">✓ ${esc(e.status)} OK</span> <span class="res">${esc(res)}</span></span>`;
+  }
+  return `<span class="line">${head}\n   <span class="bad">✗ ${esc(e.status)} ${esc(e.code)}</span> <span class="res">${esc(e.message)}</span></span>`;
+}
+async function pollActivity(){
+  const box = $("term"); if (!box) { clearInterval(activityTimer); activityTimer = null; return; }
+  const d = await api(`/api/activity?after=${SNAP ? 0 : activityNext}`);
+  if (d.restart) box.innerHTML = "";
+  activityNext = d.next;
+  if (d.entries.length) {
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+    box.insertAdjacentHTML("beforeend", d.entries.map(fmtEntry).join(""));
+    if (atBottom || d.restart) box.scrollTop = box.scrollHeight;
+  } else if (!box.innerHTML) {
+    box.innerHTML = `<span class="detail">Waiting for activity. Run a script that calls emu.watch(), for example:\n\n  python labs/aws-basics/data_science_group.py\n\nEach AWS call appears here as it happens, as the equivalent AWS CLI command and its result.</span>`;
+  }
+  $("count").textContent = `${d.next} line(s)`;
+}
+async function showActivity(){
+  $("title").textContent = "Activity monitor"; $("crumb").textContent = "";
+  $("card").innerHTML = `<div class="livebar"><span class="live ${SNAP ? "" : "on"}"><span class="dot"></span>${SNAP ? "Recorded run" : "Live, updates every second"}</span>
+    <span class="note" id="count"></span><span class="note">Secrets are replaced with ***redacted*** before anything is recorded.</span></div><div class="term" id="term"></div>`;
+  activityNext = 0; await pollActivity();
+  if (!SNAP && !activityTimer) activityTimer = setInterval(pollActivity, 1000);
 }
 
 async function showConsole(){
@@ -177,7 +227,7 @@ async function init(){
   $("pill").className = "pill " + (s.healthy ? "ok" : "bad");
   $("pilltext").textContent = SNAP ? "Snapshot" : s.healthy ? "Emulator running" : "Emulator not reachable";
   views = s.views;
-  let html = "", group = "";
+  let html = `<button data-id="activity"><span>Activity monitor</span><span></span></button>`, group = "";
   for (const v of views){
     if (v.group !== group){ group = v.group; html += `<div class="group">${esc(group)}</div>`; }
     html += `<button data-id="${v.id}"><span>${esc(v.label)}</span><span class="count" data-id="${v.id}"></span></button>`;
@@ -188,7 +238,7 @@ async function init(){
   $("refresh").onclick = () => { show(current.id, current.key, current.parent); counts(); };
   if (!s.healthy){ $("title").textContent = "Emulator not reachable"; $("card").innerHTML =
     `<div class="err">Nothing answered at ${esc(s.endpoint)}.<small>Start the emulator, then press Refresh. See README.md, step 1.</small></div>`; return; }
-  show(views[0].id); counts();
+  show("activity"); counts();
 }
 init();
 </script>

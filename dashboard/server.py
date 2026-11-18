@@ -412,6 +412,23 @@ def run_athena(sql: str, database: str | None):
     return {"columns": cols, "rows": rows, "id": qid}
 
 
+def read_activity(after: int = 0):
+    """Lines a script recorded with emu.watch(), from line `after` onwards."""
+    try:
+        lines = emu.ACTIVITY_LOG.read_text().splitlines()
+    except FileNotFoundError:
+        lines = []
+    if after > len(lines):  # the log was reset by a new run
+        after = 0
+    entries = []
+    for line in lines[after:]:
+        try:
+            entries.append(json.loads(line))
+        except ValueError:
+            pass
+    return {"next": len(lines), "entries": entries, "restart": after == 0}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):  # keep the terminal quiet
         pass
@@ -438,6 +455,8 @@ class Handler(BaseHTTPRequestHandler):
             s = emu.settings()
             self.send_json({"healthy": emu.health(), "endpoint": s["endpoint_url"], "region": s["region_name"],
                             "views": [{"id": k, "group": g, "label": l} for k, (g, l, _, show) in VIEWS.items() if show]})
+        elif u.path == "/api/activity":
+            self.send_json(read_activity(int(q.get("after", "0"))))
         elif u.path == "/api/counts":
             out = {}
             for k, (_, _, fn, show) in VIEWS.items():
