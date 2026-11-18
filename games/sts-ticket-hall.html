@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>STS Ticket Hall</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a night-time ticket hall. 3D counter on the left, the clerk's paperwork (steps, code, ticket, quiz) on the right. One deliberate dark look. */
+:root{
+  --hall:#111a2c; --panel:#18243b; --panel-2:#1f2e4a; --line:#2c3d5e;
+  --ink:#e8edf5; --muted:#9aaac2;
+  --brass:#d9ad55; --paper:#efe5cc; --paper-ink:#2a2418;
+  --go:#46b984; --stop:#e0564a; --wait:#e6b84f;
+  --display:"Big Shoulders Display", "Arial Narrow", sans-serif;
+  --body:"Archivo", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--hall);color:var(--ink);font:15px/1.5 var(--body)}
+.wrap{padding-block:14px 28px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));max-width:1360px;margin:0 auto}
+.topbar{display:flex;align-items:center;gap:16px 24px;flex-wrap:wrap;margin-bottom:14px}
+.brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand h1{font:800 34px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0;color:var(--brass)}
+.brand span{color:var(--muted);font-size:13px}
+.spacer{flex:1}
+.xp{display:flex;align-items:center;gap:10px;min-width:220px}
+.xp label{font:600 12px var(--mono);letter-spacing:.08em;color:var(--muted)}
+.xpbar{flex:1;height:10px;border-radius:6px;background:var(--panel-2);overflow:hidden;border:1px solid var(--line)}
+.xpbar i{display:block;height:100%;width:0;background:var(--brass);transition:width .6s ease}
+.xp b{font:600 13px var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);min-width:72px;text-align:right}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{font:600 11px var(--mono);letter-spacing:.04em;padding:3px 8px;border-radius:999px;border:1px dashed var(--line);color:var(--muted)}
+.badge.won{border-style:solid;border-color:var(--brass);color:var(--brass)}
+
+.layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+.stage{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#0b1220;height:min(78vh,720px);min-height:420px}
+.stage canvas{display:block;width:100%;height:100%;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.caption{position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:10px;
+  background:rgba(13,20,34,.86);border:1px solid var(--line);font-size:14px}
+.caption .num{font:800 20px/1 var(--display);color:var(--brass);min-width:24px}
+.hint{position:absolute;top:10px;right:12px;font:500 11px var(--mono);color:var(--muted);background:rgba(13,20,34,.7);padding:3px 8px;border-radius:6px}
+.nogl{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted)}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.levels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.lv{border:1px solid var(--line);background:var(--panel-2);color:var(--ink);border-radius:10px;padding:7px 6px;font:600 12px var(--mono);cursor:pointer;text-align:center}
+.lv small{display:block;font:500 10px var(--mono);color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv.on{border-color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass)}
+.lv.done small{color:var(--go)}
+.lv:disabled{opacity:.45;cursor:not-allowed}
+.lv:focus-visible,.btn:focus-visible,.opt:focus-visible,.copy:focus-visible,summary:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+h2{font:800 26px/1.05 var(--display);letter-spacing:.03em;text-transform:uppercase;margin:0;text-wrap:balance}
+.call{font:600 12px var(--mono);color:var(--brass);letter-spacing:.06em}
+.mission{margin:0;color:var(--ink);max-width:62ch}
+.btn{appearance:none;border:0;border-radius:10px;padding:12px 16px;font:700 15px var(--body);cursor:pointer;background:var(--brass);color:#1d1606}
+.btn:disabled{opacity:.5;cursor:wait}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:4px;counter-reset:s}
+.steps li{counter-increment:s;display:flex;gap:10px;padding:6px 10px;border-radius:8px;color:var(--muted);font-size:14px}
+.steps li::before{content:counter(s);font:800 16px/1.3 var(--display);color:var(--line);min-width:14px}
+.steps li.now{background:var(--panel-2);color:var(--ink)}
+.steps li.now::before{color:var(--brass)}
+.steps li.past{color:var(--ink)}
+.steps li.past::before{color:var(--go)}
+.label{font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.code{background:#0d1525;border:1px solid var(--line);border-radius:10px;overflow-x:auto;font:13px/1.65 var(--mono);padding:8px 0}
+.code div{padding:0 12px;white-space:pre;color:#b9c6da;border-left:3px solid transparent}
+.code div.hl{background:rgba(217,173,85,.13);border-left-color:var(--brass);color:var(--ink)}
+.code .c{color:#7f8fa8}
+
+.ticket{position:relative;background:var(--paper);color:var(--paper-ink);border-radius:8px;padding:14px 16px 14px 22px;font:13px/1.45 var(--mono);
+  box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.ticket::before{content:"";position:absolute;left:8px;top:10px;bottom:10px;border-left:2px dotted rgba(42,36,24,.35)}
+.ticket h3{font:800 20px/1 var(--display);letter-spacing:.08em;margin:0 0 8px;text-transform:uppercase}
+.ticket dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 12px;margin:0}
+.ticket dt{color:rgba(42,36,24,.65)}
+.ticket dd{margin:0;overflow-wrap:anywhere;font-weight:600}
+.stamp{position:absolute;right:12px;top:10px;font:800 18px/1 var(--display);letter-spacing:.12em;padding:4px 8px;border:3px solid;border-radius:6px;transform:rotate(-8deg)}
+.stamp.ok{color:#1f7a50;border-color:#1f7a50}
+.stamp.no{color:#b3352a;border-color:#b3352a}
+.ticket.expired{filter:grayscale(1) opacity(.6)}
+.ticket .note{margin:8px 0 0;font:12px/1.4 var(--body);color:rgba(42,36,24,.75)}
+
+.quiz{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--panel-2);display:grid;gap:8px}
+.quiz p{margin:0;font-weight:600}
+.opt{appearance:none;text-align:left;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:9px 12px;font:500 14px var(--body);cursor:pointer}
+.opt.right{border-color:var(--go);color:var(--go)}
+.opt.wrong{border-color:var(--stop);color:var(--stop)}
+.why{margin:0;font-size:14px;color:var(--muted)}
+.why.good{color:var(--go)}
+details{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#141f33}
+summary{cursor:pointer;font-weight:600}
+details .code{margin-top:10px}
+.out{margin-top:8px;font:12.5px/1.5 var(--mono);color:var(--go);background:#0d1525;border:1px solid var(--line);border-radius:10px;padding:8px 12px;overflow-x:auto;white-space:pre}
+.copy{appearance:none;margin-top:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:6px 10px;font:600 12px var(--mono);cursor:pointer}
+.muted{color:var(--muted);font-size:13px;margin:0}
+.done-card{border:1px solid var(--brass);border-radius:12px;padding:14px;background:var(--panel-2)}
+.done-card h3{font:800 22px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--brass);margin:0 0 8px}
+.done-card ul{margin:0;padding-left:18px;display:grid;gap:4px}
+
+@media (max-width:900px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .stage{height:clamp(300px,62vw,460px);min-height:0}
+  .brand h1{font-size:28px}
+}
+@media (max-width:460px){ .levels{grid-template-columns:repeat(2,minmax(0,1fr))} .xp{min-width:0;width:100%} }
+@media (prefers-reduced-motion: reduce){ .xpbar i{transition:none} }
+.worlds{display:flex;gap:6px 8px;flex-wrap:wrap;align-items:center;margin:-4px 0 14px}
+.worlds span{font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.worlds a{font:600 13px var(--body);color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--panel)}
+.worlds a:hover{border-color:var(--brass)}
+.worlds a[aria-current="page"]{border-color:var(--brass);color:var(--brass)}
+.worlds a:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><h1>STS Ticket Hall</h1><span>Learn AWS Security Token Service at the counter. Every ticket shows real output from AWS Emulator.</span></div>
+    <div class="spacer"></div>
+    <div class="xp"><label>XP</label><div class="xpbar"><i id="xpfill"></i></div><b id="xptext">0 / 400</b></div>
+    <div class="badges" id="badges"></div>
+  </header>
+  <nav class="worlds" aria-label="Learning worlds"><span>Worlds</span><a href="https://claude.ai/artifact/AtEd5LWk1S4bih3YQCExgM" aria-current="page" target="_blank" rel="noopener">1 · STS Ticket Hall</a><a href="https://claude.ai/artifact/XZDHJ2xqtCfapFWYJ3NQMv" target="_blank" rel="noopener">2 · IAM Permission Vault</a><a href="https://claude.ai/artifact/JHd4PAsDD1dd3vn1jmsmho" target="_blank" rel="noopener">3 · VPC Gatehouse</a></nav>
+
+  <main class="layout">
+    <section class="stage" id="stage" aria-label="3D ticket hall">
+      <span class="hint">Drag to look around</span>
+      <div class="caption" id="caption"><span class="num" id="capnum">·</span><span id="captext">Pick a level, then step up to the counter.</span></div>
+    </section>
+
+    <aside class="panel">
+      <nav class="levels" id="levels" aria-label="Levels"></nav>
+      <div>
+        <div class="call" id="call"></div>
+        <h2 id="ltitle"></h2>
+      </div>
+      <p class="mission" id="mission"></p>
+      <div class="row"><button class="btn" id="go" type="button">Step up to the counter</button><button class="btn ghost" id="again" type="button" hidden>Watch again</button></div>
+      <div><p class="label">What happens at the counter</p><ol class="steps" id="steps"></ol></div>
+      <div><p class="label">The Python behind it</p><div class="code" id="code"></div></div>
+      <div id="ticketbox" hidden></div>
+      <div class="quiz" id="quiz" hidden></div>
+      <details id="jupyter">
+        <summary>Try it in Jupyter</summary>
+        <div class="code" id="jcode"></div>
+        <button class="copy" id="copy" type="button">Copy code</button>
+        <p class="label" style="margin-top:10px">What the emulator printed when we ran it</p>
+        <div class="out" id="jout"></div>
+      </details>
+    </aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SPEED = REDUCED ? 0.35 : 1;
+
+// ------------------------------------------------------------------ levels (values captured from AWS Emulator)
+const ACCT = "000000000000";
+const LEVELS = [
+  {
+    key: "whoami", short: "Who am I?", call: "sts:GetCallerIdentity", title: "Who am I?",
+    mission: "Hand your access key to the clerk and ask whose it is. Do this first whenever access behaves strangely: half of all permission puzzles are someone using the wrong identity.",
+    visitor: { name: "you (admin)", color: 0x5aa0e6 },
+    trust: null,
+    steps: ["You hand over your access key ID.", "STS checks the request's signature, made with your secret key.", "STS looks up which identity owns that key.", "The clerk prints your identity ticket."],
+    code: ['sts = emu.client("sts")', 'me = sts.get_caller_identity()', 'print(me["Account"], me["Arn"])'],
+    codeForStep: [0, 1, 1, 2],
+    ticket: { kind: "ok", title: "Identity ticket", stamp: "VERIFIED",
+      rows: [["UserId", "AIDAH5I7GEMO7ADXNFAZU"], ["Account", ACCT], ["Arn", `arn:aws:iam::${ACCT}:user/emulator`]],
+      note: "No permission is needed for this call. AWS answers it for any valid key, even when a policy explicitly denies it." },
+    jupyter: ['sts = emu.client("sts")', 'me = sts.get_caller_identity()', 'print(me["Account"], me["Arn"])'],
+    output: `${ACCT} arn:aws:iam::${ACCT}:user/emulator`,
+    quiz: { q: "Which IAM permission do you need to call GetCallerIdentity?", options: [
+      ["sts:GetCallerIdentity", false, "It sounds right, but AWS doesn't check any permission for this call. A valid key always gets an answer."],
+      ["None at all", true, "Correct. Any valid key can ask who it belongs to, so it's always safe to run first."],
+      ["iam:GetUser", false, "That reads a user's details from IAM. Asking who you are goes to STS and needs no permission."]] },
+    badge: "Identity checked"
+  },
+  {
+    key: "assume", short: "Borrow a badge", call: "sts:AssumeRole", title: "Borrow a badge",
+    mission: "ds-user-1 needs the ticket-desk-demo role for a short task. A role has no password of its own: you ask STS for a temporary ticket to act as it, and STS checks the role's trust policy first.",
+    visitor: { name: "ds-user-1", color: 0x46b984 },
+    trust: { role: "ticket-desk-demo", allowed: ["user/ds-user-1"], check: "user/ds-user-1", ok: true },
+    steps: ["ds-user-1 hands over their own access key.", "STS confirms the caller is user/ds-user-1.", "STS reads the role's trust policy on the board.", "ds-user-1 is on the list, so a temporary ticket is printed.", "The ticket works for 15 minutes, then stops on its own."],
+    code: ['key = iam.create_access_key(UserName="ds-user-1")["AccessKey"]', 'sts_as_user = emu.client("sts", credentials=key)', 'resp = sts_as_user.assume_role(RoleArn=ROLE_ARN,', '        RoleSessionName="ticket-1", DurationSeconds=900)', 'creds = resp["Credentials"]  # the temporary ticket'],
+    codeForStep: [0, 1, 2, 4, 3],
+    ticket: { kind: "temp", title: "Temporary role ticket", stamp: "ISSUED",
+      rows: [["AccessKeyId", "EMULATORASM637AL35CI"], ["SecretAccessKey", "•••••••• (40 characters)"], ["SessionToken", "•••••••• (712 characters)"],
+             ["AssumedRoleUser", `arn:aws:sts::${ACCT}:assumed-role/ticket-desk-demo/ticket-1`], ["Expires in", "15:00"]],
+      note: "Three parts travel together: key ID, secret and session token. On real AWS, temporary key IDs start with ASIA; the emulator uses its own prefix." },
+    jupyter: ['import json', 'iam = emu.client("iam")', 'acct = emu.client("sts").get_caller_identity()["Account"]', 'trust = {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": "sts:AssumeRole",', '         "Principal": {"AWS": f"arn:aws:iam::{acct}:user/ds-user-1"}}]}', 'iam.create_role(RoleName="ticket-desk-demo", AssumeRolePolicyDocument=json.dumps(trust))', 'ROLE_ARN = f"arn:aws:iam::{acct}:role/ticket-desk-demo"', '', 'key = iam.create_access_key(UserName="ds-user-1")["AccessKey"]', 'resp = emu.client("sts", credentials=key).assume_role(', '    RoleArn=ROLE_ARN, RoleSessionName="ticket-1", DurationSeconds=900)', 'creds = resp["Credentials"]', 'print(resp["AssumedRoleUser"]["Arn"], creds["Expiration"])'],
+    output: `arn:aws:sts::${ACCT}:assumed-role/ticket-desk-demo/ticket-1 2026-11-18 08:03:58+00:00`,
+    quiz: { q: "What decides who may assume a role?", options: [
+      ["The role's trust policy", true, "Correct. The trust policy names who may ask for the role's ticket. A separate permissions policy says what the role can do."],
+      ["The user's password", false, "Passwords are for signing in to the console. API calls like this one are signed with access keys."],
+      ["The S3 bucket's policy", false, "A bucket policy controls access to that bucket. It plays no part in who may assume a role."]] },
+    badge: "Badge borrowed"
+  },
+  {
+    key: "denied", short: "Not on the list", call: "sts:AssumeRole", title: "Not on the list",
+    mission: "ds-user-2 tries the same thing. Same counter, same role, but a different name. Watch the clerk check the trust board.",
+    visitor: { name: "ds-user-2", color: 0xe6b84f },
+    trust: { role: "ticket-desk-demo", allowed: ["user/ds-user-1"], check: "user/ds-user-2", ok: false },
+    steps: ["ds-user-2 hands over their own access key.", "STS confirms the caller is user/ds-user-2.", "STS reads the role's trust policy on the board.", "ds-user-2 is not on the list. Request refused."],
+    code: ['key2 = iam.create_access_key(UserName="ds-user-2")["AccessKey"]', 'try:', '    emu.client("sts", credentials=key2).assume_role(', '        RoleArn=ROLE_ARN, RoleSessionName="ticket-2")', 'except ClientError as e:', '    print(e.response["Error"]["Code"])  # AccessDenied'],
+    codeForStep: [0, 2, 2, 5],
+    ticket: { kind: "no", title: "Request refused", stamp: "DENIED",
+      rows: [["Error code", "AccessDenied"], ["Message", `User: arn:aws:iam::${ACCT}:user/ds-user-2 is not authorized to perform: sts:AssumeRole on resource: arn:aws:iam::${ACCT}:role/ticket-desk-demo`]],
+      note: "The refusal names who asked, what they tried and on which resource. Read it top to bottom when debugging." },
+    jupyter: ['from botocore.exceptions import ClientError', 'key2 = iam.create_access_key(UserName="ds-user-2")["AccessKey"]', 'try:', '    emu.client("sts", credentials=key2).assume_role(RoleArn=ROLE_ARN, RoleSessionName="ticket-2")', 'except ClientError as e:', '    print(e.response["Error"]["Code"], "|", e.response["Error"]["Message"])'],
+    output: `AccessDenied | User: arn:aws:iam::${ACCT}:user/ds-user-2 is not authorized to perform: sts:AssumeRole on resource: arn:aws:iam::${ACCT}:role/ticket-desk-demo`,
+    quiz: { q: "ds-user-2 genuinely needs this role. What's the right fix?", options: [
+      ["Add user/ds-user-2 to the role's trust policy", true, "Correct. Change the list at the counter, for exactly the person who needs it."],
+      ["Give ds-user-2 AdministratorAccess", false, "That grants far more than one role's worth of access. Least privilege means giving only what the task needs."],
+      ["Let ds-user-2 use ds-user-1's key", false, "Shared keys break the audit trail: every action would look like ds-user-1's. Each person signs with their own key."]] },
+    badge: "Least privilege"
+  },
+  {
+    key: "expire", short: "Tickets expire", call: "temporary credentials", title: "Tickets expire",
+    mission: "ds-user-1 still holds the ticket from level 2. Fast-forward the clock 15 minutes and try to use it again.",
+    visitor: { name: "ds-user-1", color: 0x46b984 },
+    trust: { role: "ticket-desk-demo", allowed: ["user/ds-user-1"], check: null, ok: true },
+    steps: ["ds-user-1 still holds the level 2 ticket.", "The clock runs forward 15 minutes (simulated here).", "ds-user-1 shows the old ticket at the counter.", "STS rejects it: ExpiredToken.", "Ask again: a fresh AssumeRole call prints a new ticket."],
+    code: ['s3_as_role = emu.client("s3", credentials=creds)', '# ... 15 minutes later ...', 's3_as_role.list_buckets()  # ExpiredToken', 'creds = sts_as_user.assume_role(...)["Credentials"]  # new ticket'],
+    codeForStep: [0, 1, 2, 2, 3],
+    ticket: { kind: "expired", title: "Temporary role ticket", stamp: "EXPIRED",
+      rows: [["AccessKeyId", "EMULATORASM637AL35CI"], ["Expired at", "2026-11-18 08:03:58 UTC"], ["Error on use", "ExpiredToken"]],
+      note: "Simulated: the game fast-forwards the clock. 900 seconds (15 minutes) is the shortest ticket AWS allows, so in Jupyter you would have to wait it out." },
+    jupyter: ['print("Ticket valid until:", creds["Expiration"])', 's3_as_role = emu.client("s3", credentials=creds)', 'print(len(s3_as_role.list_buckets()["Buckets"]), "buckets visible as the role")', '# run the last line again after the expiry time to see the refusal'],
+    output: "Ticket valid until: 2026-11-18 08:03:58+00:00\n(the second line's output depends on the role's permissions)",
+    quiz: { q: "Why do banks prefer temporary tickets for elevated access?", options: [
+      ["A leaked ticket stops working on its own", true, "Correct. A stolen long-term key works until someone notices. A role ticket dies within minutes or hours."],
+      ["They make API calls faster", false, "Speed is the same. The benefit is a short lifetime, which limits the damage from a leak."],
+      ["They don't need a trust policy", false, "They do: every role ticket passes the trust-policy check first, as you saw in level 3."]] },
+    badge: "Short-lived by design"
+  }
+];
+
+// ------------------------------------------------------------------ progress (per-viewer convenience only)
+let state = { xp: 0, unlocked: 1, done: {}, current: 0 };
+try { const saved = JSON.parse(localStorage.getItem("sts-ticket-hall") || "null"); if (saved) state = { ...state, ...saved }; } catch (e) {}
+const save = () => { try { localStorage.setItem("sts-ticket-hall", JSON.stringify(state)); } catch (e) {} };
+
+// ------------------------------------------------------------------ tweens
+const tweens = new Set();
+const ease = k => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+const lerp = (a, b, k) => a + (b - a) * k;
+function tween(ms, fn) { return new Promise(res => tweens.add({ t0: performance.now(), dur: Math.max(1, ms * SPEED), fn, res })); }
+const wait = ms => tween(ms, () => {});
+
+// ------------------------------------------------------------------ 3D scene
+const stage = $("stage");
+let renderer = null, scene, camera, W = 0, H = 0;
+const S = {};   // scene objects
+let theta = 0.3, targetTheta = 0.3, drag = null;
+
+function canvasTexture(w, h, draw) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d"); draw(g, w, h);
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return { tex: t, canvas: c, g };
+}
+function redraw(obj, draw) { draw(obj.g, obj.canvas.width, obj.canvas.height); obj.tex.needsUpdate = true; }
+
+function drawSign(g, w, h) {
+  g.fillStyle = "#14213a"; g.fillRect(0, 0, w, h);
+  g.strokeStyle = "#d9ad55"; g.lineWidth = 8; g.strokeRect(10, 10, w - 20, h - 20);
+  g.fillStyle = "#d9ad55"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = "800 92px 'Big Shoulders Display', 'Arial Narrow', sans-serif"; g.fillText("STS  TICKET COUNTER", w / 2, h * 0.42);
+  g.fillStyle = "#c9d4e6"; g.font = "500 34px 'IBM Plex Mono', monospace"; g.fillText("Security Token Service  ·  who you are, and who you may become", w / 2, h * 0.76);
+}
+function drawBoard(g, w, h, trust) {
+  g.fillStyle = "#0f1a2e"; g.fillRect(0, 0, w, h);
+  g.strokeStyle = "#2c3d5e"; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12);
+  g.textBaseline = "top"; g.textAlign = "left";
+  g.fillStyle = "#9aaac2"; g.font = "600 26px 'IBM Plex Mono', monospace"; g.fillText("TRUST POLICY BOARD", 28, 24);
+  if (!trust) { g.fillStyle = "#6f7f99"; g.font = "500 28px 'Archivo', sans-serif"; g.fillText("No role requested.", 28, 90); g.fillText("GetCallerIdentity skips this board.", 28, 130); return; }
+  g.fillStyle = "#d9ad55"; g.font = "800 46px 'Big Shoulders Display', sans-serif"; g.fillText("role/" + trust.role, 28, 64);
+  g.fillStyle = "#9aaac2"; g.font = "500 24px 'IBM Plex Mono', monospace"; g.fillText("May assume this role:", 28, 128);
+  let y = 166;
+  for (const who of trust.allowed) {
+    const hit = trust.highlight && trust.highlight === who;
+    g.fillStyle = hit ? "rgba(70,185,132,.22)" : "rgba(255,255,255,.04)"; g.fillRect(22, y - 6, w - 44, 46);
+    g.fillStyle = "#e8edf5"; g.font = "600 30px 'IBM Plex Mono', monospace"; g.fillText("✓  " + who, 34, y);
+    y += 56;
+  }
+  if (trust.highlight && !trust.allowed.includes(trust.highlight)) {
+    g.fillStyle = "rgba(224,86,74,.22)"; g.fillRect(22, y - 6, w - 44, 46);
+    g.fillStyle = "#ff8f86"; g.font = "600 30px 'IBM Plex Mono', monospace"; g.fillText("✗  " + trust.highlight + "  not listed", 34, y);
+  }
+}
+function drawTicket(g, w, h, t) {
+  const red = t.kind === "no", grey = t.kind === "expired";
+  g.fillStyle = grey ? "#cfcabd" : "#efe5cc"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "rgba(42,36,24,.35)"; for (let y = 14; y < h; y += 22) { g.beginPath(); g.arc(22, y, 3, 0, 7); g.fill(); }
+  g.fillStyle = "#2a2418"; g.textAlign = "left"; g.textBaseline = "top";
+  g.font = "800 46px 'Big Shoulders Display', sans-serif"; g.fillText(t.title.toUpperCase(), 48, 22);
+  g.font = "500 22px 'IBM Plex Mono', monospace";
+  let y = 86;
+  for (const [k, v] of t.rows.slice(0, 4)) { const s = `${k}: ${v}`; g.fillText(s.length > 46 ? s.slice(0, 45) + "…" : s, 48, y); y += 32; }
+  g.save(); g.translate(w - 150, 56); g.rotate(-0.14);
+  g.strokeStyle = g.fillStyle = red || grey ? "#b3352a" : "#1f7a50"; g.lineWidth = 6; g.strokeRect(-100, -30, 200, 64);
+  g.font = "800 40px 'Big Shoulders Display', sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(t.stamp, 0, 2); g.restore();
+}
+function drawTag(g, w, h, text, color) {
+  g.clearRect(0, 0, w, h); g.fillStyle = "rgba(13,20,34,.85)";
+  const r = 20; g.beginPath(); g.moveTo(r, 0); g.arcTo(w, 0, w, h, r); g.arcTo(w, h, 0, h, r); g.arcTo(0, h, 0, 0, r); g.arcTo(0, 0, w, 0, r); g.fill();
+  g.fillStyle = color; g.font = "600 36px 'IBM Plex Mono', monospace"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, w / 2, h / 2 + 2);
+}
+function drawClock(g, w, h, minutesLeft) {
+  g.clearRect(0, 0, w, h); g.fillStyle = "#efe5cc"; g.beginPath(); g.arc(w / 2, h / 2, w / 2 - 6, 0, 7); g.fill();
+  g.strokeStyle = "#2a2418"; g.lineWidth = 8; g.stroke();
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.beginPath(); g.moveTo(w / 2 + Math.sin(a) * 96, h / 2 - Math.cos(a) * 96); g.lineTo(w / 2 + Math.sin(a) * 110, h / 2 - Math.cos(a) * 110); g.stroke(); }
+  const frac = minutesLeft / 15;
+  g.fillStyle = frac > 0 ? "rgba(70,185,132,.35)" : "rgba(224,86,74,.35)";
+  g.beginPath(); g.moveTo(w / 2, h / 2); g.arc(w / 2, h / 2, 90, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (frac > 0 ? frac : 1)); g.fill();
+  g.fillStyle = "#2a2418"; g.font = "600 34px 'IBM Plex Mono', monospace"; g.textAlign = "center"; g.textBaseline = "middle";
+  const m = Math.max(0, minutesLeft), mm = Math.floor(m), ss = Math.round((m - mm) * 60) % 60;
+  g.fillText(`${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`, w / 2, h / 2 + 52);
+}
+
+function person(color) {
+  const grp = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: .55 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(.3, .36, 1.1, 20), mat); body.position.y = .55;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.25, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe9d3b7, roughness: .7 })); head.position.y = 1.36;
+  grp.add(body, head); grp.userData = { body, head, mat }; return grp;
+}
+
+function buildScene() {
+  try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+  catch (e) { renderer = null; }
+  if (!renderer || typeof THREE === "undefined") {
+    stage.insertAdjacentHTML("afterbegin", `<div class="nogl">3D needs WebGL, which this browser has turned off. The levels, tickets and quiz on the right still work.</div>`);
+    return;
+  }
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  stage.prepend(renderer.domElement);
+  scene = new THREE.Scene(); scene.background = new THREE.Color(0x0b1220); scene.fog = new THREE.Fog(0x0b1220, 14, 30);
+  camera = new THREE.PerspectiveCamera(42, 1, .1, 100);
+
+  scene.add(new THREE.HemisphereLight(0xa9bde0, 0x10141f, .55));
+  const key = new THREE.DirectionalLight(0xffffff, .55); key.position.set(5, 9, 6); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); scene.add(key);
+  const spot = new THREE.SpotLight(0xffd79a, 1.1, 18, .5, .6); spot.position.set(0, 6.5, 3.5); spot.target.position.set(0, 1, .5); spot.castShadow = true; scene.add(spot, spot.target);
+  S.boardLight = new THREE.PointLight(0x46b984, 0, 4); S.boardLight.position.set(-3.1, 3, -.6); scene.add(S.boardLight);
+
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x18233a, roughness: .9 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const grid = new THREE.GridHelper(40, 40, 0x2c3d5e, 0x1f2c45); grid.position.y = .002; scene.add(grid);
+
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(16, 7), new THREE.MeshStandardMaterial({ color: 0x14203a, roughness: 1 }));
+  wall.position.set(0, 3.5, -1.6); scene.add(wall);
+  const sign = canvasTexture(1600, 260, drawSign);
+  const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 1.2), new THREE.MeshBasicMaterial({ map: sign.tex }));
+  signMesh.position.set(0, 4.6, -1.55); scene.add(signMesh);
+
+  S.board = canvasTexture(720, 440, (g, w, h) => drawBoard(g, w, h, null));
+  const boardMesh = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 1.9), new THREE.MeshBasicMaterial({ map: S.board.tex }));
+  boardMesh.position.set(-3.3, 2.75, -1.55); scene.add(boardMesh);
+
+  S.clock = canvasTexture(256, 256, (g, w, h) => drawClock(g, w, h, 15));
+  const clockMesh = new THREE.Mesh(new THREE.CircleGeometry(.6, 40), new THREE.MeshBasicMaterial({ map: S.clock.tex, transparent: true }));
+  clockMesh.position.set(3.3, 2.8, -1.55); scene.add(clockMesh);
+
+  const brass = new THREE.MeshStandardMaterial({ color: 0xd9ad55, metalness: .6, roughness: .35 });
+  const wood = new THREE.MeshStandardMaterial({ color: 0x2b3a58, roughness: .7 });
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(6, 1.1, 1), wood); counter.position.set(0, .55, .4); counter.castShadow = counter.receiveShadow = true; scene.add(counter);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(6.1, .08, 1.1), brass); top.position.set(0, 1.14, .4); scene.add(top);
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.4), new THREE.MeshStandardMaterial({ color: 0x9fc4ff, transparent: true, opacity: .12, roughness: .1 }));
+  glass.position.set(0, 2.05, .4); scene.add(glass);
+  const slot = new THREE.Mesh(new THREE.BoxGeometry(1.1, .06, .5), new THREE.MeshStandardMaterial({ color: 0x0a0f18 })); slot.position.set(0, 1.19, .6); scene.add(slot);
+
+  S.scanner = new THREE.Mesh(new THREE.TorusGeometry(.22, .04, 12, 40), new THREE.MeshStandardMaterial({ color: 0x5aa0e6, emissive: 0x000000 }));
+  S.scanner.rotation.x = -Math.PI / 2; S.scanner.position.set(1.6, 1.22, .45); scene.add(S.scanner);
+
+  S.clerk = person(0x2f4c7a); S.clerk.position.set(0, 0, -.5); scene.add(S.clerk);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(.27, .27, .12, 24), brass); cap.position.y = 1.58; S.clerk.add(cap);
+  S.arm = new THREE.Group(); S.arm.position.set(.36, 1.0, 0);
+  const armMesh = new THREE.Mesh(new THREE.BoxGeometry(.12, .12, .7), new THREE.MeshStandardMaterial({ color: 0x2f4c7a })); armMesh.position.z = .32; S.arm.add(armMesh);
+  const stamper = new THREE.Mesh(new THREE.CylinderGeometry(.09, .12, .16, 16), brass); stamper.position.set(0, -.08, .68); S.arm.add(stamper);
+  S.clerk.add(S.arm);
+
+  for (const x of [-1.1, 1.1]) for (const z of [3.4, 6.2]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(.05, .07, 1, 12), brass); post.position.set(x, .5, z); scene.add(post);
+  }
+  for (const x of [-1.1, 1.1]) { const rope = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 2.8, 8), new THREE.MeshStandardMaterial({ color: 0x8c2f3a })); rope.rotation.x = Math.PI / 2; rope.position.set(x, .9, 4.8); scene.add(rope); }
+
+  S.player = person(0x5aa0e6); S.player.position.set(0, 0, 6.8); S.player.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(S.player);
+  S.tag = canvasTexture(512, 96, (g, w, h) => drawTag(g, w, h, "you", "#e8edf5"));
+  S.tagSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: S.tag.tex, transparent: true })); S.tagSprite.scale.set(1.5, .28, 1); S.tagSprite.position.y = 1.95; S.player.add(S.tagSprite);
+
+  S.card = new THREE.Mesh(new THREE.BoxGeometry(.42, .02, .26), new THREE.MeshStandardMaterial({ color: 0x5aa0e6, emissive: 0x16324f })); S.card.visible = false; scene.add(S.card);
+  S.ticketTex = canvasTexture(640, 260, (g, w, h) => drawTicket(g, w, h, LEVELS[0].ticket));
+  S.ticket = new THREE.Mesh(new THREE.PlaneGeometry(1.6, .65), new THREE.MeshStandardMaterial({ map: S.ticketTex.tex, side: THREE.DoubleSide, roughness: .8 }));
+  S.ticket.visible = false; scene.add(S.ticket);
+
+  const el = renderer.domElement;
+  el.addEventListener("pointerdown", e => { drag = { x: e.clientX, t: targetTheta }; el.setPointerCapture(e.pointerId); });
+  el.addEventListener("pointermove", e => { if (drag) targetTheta = Math.max(-1.1, Math.min(1.1, drag.t - (e.clientX - drag.x) / 260)); });
+  el.addEventListener("pointerup", () => { drag = null; });
+  new ResizeObserver(resize).observe(stage); resize();
+}
+function resize() {
+  if (!renderer) return;
+  W = stage.clientWidth; H = stage.clientHeight; renderer.setSize(W, H, false);
+  camera.aspect = W / H; camera.fov = W < 520 ? 54 : 42; camera.updateProjectionMatrix();
+}
+
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  for (const tw of [...tweens]) { const k = Math.min(1, (now - tw.t0) / tw.dur); tw.fn(ease(k), k); if (k >= 1) { tweens.delete(tw); tw.res(); } }
+  if (!renderer) return;
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  theta += (targetTheta - theta) * Math.min(1, dt * 6);
+  const sway = REDUCED ? 0 : Math.sin(now / 3200) * .04;
+  const r = W < 520 ? 13.5 : 11.8;
+  camera.position.set(Math.sin(theta + sway) * r, 5.6, Math.cos(theta + sway) * r + .6);
+  camera.lookAt(0, 1.9, 1.2);
+  if (S.scanner.userData.spin) S.scanner.rotation.z += dt * 6;
+  renderer.render(scene, camera);
+}
+
+// ------------------------------------------------------------------ panel UI
+const lvlNav = $("levels");
+function renderLevels() {
+  lvlNav.innerHTML = LEVELS.map((l, i) => `<button class="lv${i === state.current ? " on" : ""}${state.done[l.key] ? " done" : ""}" type="button" data-i="${i}" ${i >= state.unlocked ? "disabled" : ""} aria-label="Level ${i + 1}: ${esc(l.short)}">L${i + 1}<small>${state.done[l.key] ? "cleared" : i >= state.unlocked ? "locked" : esc(l.short)}</small></button>`).join("");
+  lvlNav.querySelectorAll(".lv").forEach(b => b.onclick = () => { if (busy) return; state.current = +b.dataset.i; save(); openLevel(); });
+  const xp = Math.min(400, state.xp);
+  $("xpfill").style.width = (xp / 4) + "%"; $("xptext").textContent = `${xp} / 400`;
+  $("badges").innerHTML = LEVELS.map(l => `<span class="badge${state.done[l.key] ? " won" : ""}">${esc(l.badge)}</span>`).join("");
+}
+function renderCode(lines, hl) {
+  $("code").innerHTML = lines.map((ln, i) => `<div class="${i === hl ? "hl" : ""}">${highlight(ln) || " "}</div>`).join("");
+}
+function highlight(ln) { const i = ln.indexOf("#"); return i < 0 ? esc(ln) : esc(ln.slice(0, i)) + `<span class="c">${esc(ln.slice(i))}</span>`; }
+function setStep(L, i) {
+  [...$("steps").children].forEach((li, j) => li.className = j < i ? "past" : j === i ? "now" : "");
+  renderCode(L.code, i >= 0 ? L.codeForStep[i] : -1);
+  $("capnum").textContent = i >= 0 ? i + 1 : "·";
+  $("captext").textContent = i >= 0 ? L.steps[i] : "Press “Step up to the counter” to start.";
+}
+let countdown = null;
+function showTicket(L, expired) {
+  clearInterval(countdown);
+  const t = L.ticket;
+  const box = $("ticketbox"); box.hidden = false;
+  box.innerHTML = `<p class="label">Your ticket</p><div class="ticket${t.kind === "expired" || expired ? " expired" : ""}" id="tk"><span class="stamp ${t.kind === "ok" || t.kind === "temp" ? "ok" : "no"}">${esc(t.stamp)}</span>
+    <h3>${esc(t.title)}</h3><dl>${t.rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd${k === "Expires in" ? ' id="cd"' : ""}>${esc(v)}</dd>`).join("")}</dl><p class="note">${esc(t.note)}</p></div>`;
+  if (t.kind === "temp") {
+    let left = 15 * 60;
+    countdown = setInterval(() => { left = Math.max(0, left - 1); const el = $("cd"); if (!el) return clearInterval(countdown); el.textContent = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")} (live countdown)`; }, 1000);
+  }
+}
+function showQuiz(L, i) {
+  const q = $("quiz"); q.hidden = false;
+  const solved = !!state.done[L.key];
+  q.innerHTML = `<p class="label" style="margin:0">Quick check · +100 XP</p><p>${esc(L.quiz.q)}</p>` +
+    L.quiz.options.map(([t], j) => `<button class="opt" type="button" data-j="${j}">${esc(t)}</button>`).join("") + `<p class="why" id="why" aria-live="polite">${solved ? "Already cleared. Answer again if you like." : ""}</p><div id="nextwrap"></div>`;
+  q.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+    const [, right, why] = L.quiz.options[+b.dataset.j];
+    b.classList.add(right ? "right" : "wrong");
+    $("why").textContent = why; $("why").className = "why" + (right ? " good" : "");
+    if (right) {
+      q.querySelectorAll(".opt").forEach(o => o.disabled = true);
+      if (!state.done[L.key]) { state.done[L.key] = true; state.xp += 100; state.unlocked = Math.max(state.unlocked, Math.min(LEVELS.length, i + 2)); save(); renderLevels(); }
+      $("nextwrap").innerHTML = i + 1 < LEVELS.length
+        ? `<button class="btn" type="button" id="next">Next: ${esc(LEVELS[i + 1].short)}</button>`
+        : `<div class="done-card"><h3>Counter cleared</h3><ul>
+             <li>GetCallerIdentity tells you who a key belongs to. No permission needed.</li>
+             <li>AssumeRole swaps your key for a temporary role ticket.</li>
+             <li>The role's trust policy decides who may get that ticket.</li>
+             <li>Tickets expire on their own, so leaks do less damage.</li></ul>
+             <p class="muted" style="margin-top:8px">Next in chat: Step 2, create your own IAM user.</p></div>`;
+      const n = $("next"); if (n) n.onclick = () => { state.current = i + 1; save(); openLevel(); };
+    }
+  });
+}
+
+let busy = false;
+function openLevel() {
+  const i = state.current, L = LEVELS[i];
+  clearInterval(countdown);
+  renderLevels();
+  $("call").textContent = `Level ${i + 1} · ${L.call}`;
+  $("ltitle").textContent = L.title;
+  $("mission").textContent = L.mission;
+  $("steps").innerHTML = L.steps.map(s => `<li>${esc(s)}</li>`).join("");
+  $("ticketbox").hidden = true; $("quiz").hidden = true; $("again").hidden = true;
+  $("go").textContent = L.key === "expire" ? "Fast-forward 15 minutes" : "Step up to the counter"; $("go").disabled = false;
+  $("jcode").innerHTML = L.jupyter.map(ln => `<div>${highlight(ln) || " "}</div>`).join("");
+  $("jout").textContent = L.output;
+  setStep(L, -1);
+  resetScene(L);
+}
+
+function resetScene(L) {
+  if (!renderer) return;
+  const p = S.player;
+  p.position.set(0, 0, 6.8); p.rotation.set(0, 0, 0);
+  p.userData.mat.color.setHex(L.visitor.color);
+  redraw(S.tag, (g, w, h) => drawTag(g, w, h, L.visitor.name, "#" + L.visitor.color.toString(16).padStart(6, "0")));
+  S.card.visible = false; S.card.material.color.setHex(L.visitor.color);
+  S.ticket.visible = false; S.ticket.scale.set(1, 1, 1);
+  S.clerk.userData.head.rotation.set(0, 0, 0); S.arm.rotation.x = 0;
+  S.scanner.material.emissive.setHex(0x000000); S.scanner.userData.spin = false;
+  S.boardLight.intensity = 0;
+  redraw(S.board, (g, w, h) => drawBoard(g, w, h, L.trust ? { ...L.trust, highlight: null } : null));
+  redraw(S.clock, (g, w, h) => drawClock(g, w, h, 15));
+  if (L.key === "expire") {   // ds-user-1 arrives already holding the level 2 ticket
+    redraw(S.ticketTex, (g, w, h) => drawTicket(g, w, h, LEVELS[1].ticket));
+    S.ticket.visible = true; placeTicketWithPlayer(1);
+  }
+}
+function placeTicketWithPlayer(k) {
+  const p = S.player.position;
+  S.ticket.position.set(lerp(0, p.x + .55, k), lerp(1.5, 1.25, k), lerp(.9, p.z + .25, k));
+  S.ticket.rotation.set(lerp(-1.2, -0.35, k), lerp(0, -.3, k), 0);
+  S.ticket.scale.setScalar(lerp(1, .55, k));
+}
+
+async function play() {
+  if (busy) return; busy = true;
+  const i = state.current, L = LEVELS[i];
+  $("go").disabled = true; $("again").hidden = true; $("ticketbox").hidden = true; $("quiz").hidden = true;
+  resetScene(L);
+  const has3d = !!renderer;
+  const p = has3d ? S.player : null;
+
+  if (L.key === "expire") {
+    setStep(L, 0); await wait(1300);
+    setStep(L, 1);
+    if (has3d) await tween(2600, k => redraw(S.clock, (g, w, h) => drawClock(g, w, h, 15 * (1 - k))));
+    else await wait(1500);
+    if (has3d) redraw(S.ticketTex, (g, w, h) => drawTicket(g, w, h, L.ticket));
+    setStep(L, 2);
+    if (has3d) await tween(1500, k => { p.position.z = lerp(6.8, 2.2, k); p.position.y = REDUCED ? 0 : Math.abs(Math.sin(k * 12)) * .06; placeTicketWithPlayer(1); });
+    else await wait(800);
+    if (has3d) await tween(700, k => placeTicketWithPlayer(1 - k * .7));
+    setStep(L, 3);
+    if (has3d) { S.scanner.material.emissive.setHex(0x7a1a14); await clerkShake(); }
+    else await wait(800);
+    showTicket(L, true);
+    setStep(L, 4); await wait(900);
+  } else {
+    setStep(L, 0);
+    if (has3d) await tween(1500, k => { p.position.z = lerp(6.8, 2.2, k); p.position.y = REDUCED ? 0 : Math.abs(Math.sin(k * 12)) * .06; });
+    if (has3d) { S.card.visible = true; await tween(900, k => { S.card.position.set(lerp(.4, 1.6, k), lerp(1.1, 1.3, k) + Math.sin(k * Math.PI) * .45, lerp(2.4, .45, k)); S.card.rotation.y = k * 4; }); }
+    else await wait(900);
+    setStep(L, 1);
+    if (has3d) { S.scanner.userData.spin = true; S.scanner.material.emissive.setHex(0x1f5f9e); await wait(1100); S.scanner.userData.spin = false; S.scanner.material.emissive.setHex(0x0e3b26); }
+    else await wait(900);
+    let s = 2;
+    if (L.trust) {
+      setStep(L, 2);
+      if (has3d) {
+        S.boardLight.color.setHex(L.trust.ok ? 0x46b984 : 0xe0564a);
+        await tween(500, k => S.boardLight.intensity = k * 2.2);
+        redraw(S.board, (g, w, h) => drawBoard(g, w, h, { ...L.trust, highlight: L.trust.check }));
+        await tween(450, k => S.clerk.userData.head.rotation.y = k * .9);
+        await wait(700);
+        await tween(400, k => S.clerk.userData.head.rotation.y = .9 * (1 - k));
+      } else await wait(1200);
+      s = 3;
+    } else {
+      setStep(L, 2); if (has3d) await wait(900); s = 3;
+    }
+    setStep(L, s);
+    if (L.ticket.kind === "no") {
+      if (has3d) { S.scanner.material.emissive.setHex(0x7a1a14); redraw(S.ticketTex, (g, w, h) => drawTicket(g, w, h, L.ticket)); await stampAndPrint(); await clerkShake(); }
+      else await wait(900);
+    } else {
+      if (has3d) { redraw(S.ticketTex, (g, w, h) => drawTicket(g, w, h, L.ticket)); await stampAndPrint(); await tween(1000, k => placeTicketWithPlayer(k)); }
+      else await wait(900);
+    }
+    if (has3d) S.card.visible = false;
+    showTicket(L, false);
+    if (L.steps.length > s + 1) { setStep(L, s + 1); await wait(1100); }
+  }
+  setStep(L, L.steps.length);
+  $("captext").textContent = "Done. Check your ticket on the right, then answer the quick check.";
+  $("capnum").textContent = "✓";
+  renderCode(L.code, -1);
+  showQuiz(L, i);
+  $("go").disabled = false; $("again").hidden = false; busy = false;
+}
+async function stampAndPrint() {
+  await tween(260, k => S.arm.rotation.x = k * .7);
+  await tween(200, k => S.arm.rotation.x = .7 * (1 - k));
+  S.ticket.visible = true; S.ticket.rotation.set(-1.2, 0, 0); S.ticket.position.set(0, 1.2, .7);
+  await tween(700, k => { S.ticket.position.y = lerp(1.2, 1.5, k); S.ticket.position.z = lerp(.7, .9, k); S.ticket.scale.set(1, Math.max(.05, k), 1); });
+}
+async function clerkShake() { await tween(900, k => S.clerk.userData.head.rotation.y = Math.sin(k * Math.PI * 4) * .45 * (1 - k)); }
+
+$("go").onclick = play;
+$("again").onclick = () => { $("go").disabled = false; play(); };
+$("copy").onclick = () => {
+  const text = LEVELS[state.current].jupyter.join("\n");
+  navigator.clipboard.writeText(text).then(() => { $("copy").textContent = "Copied"; setTimeout(() => $("copy").textContent = "Copy code", 1400); })
+    .catch(() => { const r = document.createRange(); r.selectNodeContents($("jcode")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("copy").textContent = "Selected: press Ctrl+C"; });
+};
+
+function start() {
+  if (typeof THREE !== "undefined") buildScene();
+  else stage.insertAdjacentHTML("afterbegin", `<div class="nogl">The 3D library could not load. The levels, tickets and quiz on the right still work.</div>`);
+  if (state.current >= state.unlocked) state.current = 0;
+  openLevel();
+  requestAnimationFrame(loop);
+  if (document.fonts && renderer) document.fonts.ready.then(() => { redraw(S.tag, (g, w, h) => drawTag(g, w, h, LEVELS[state.current].visitor.name, "#" + LEVELS[state.current].visitor.color.toString(16).padStart(6, "0"))); const sgn = scene.children.find(o => o.material && o.material.map && o.geometry && o.geometry.parameters && o.geometry.parameters.width === 7.4); if (sgn) { const c = sgn.material.map.image; drawSign(c.getContext("2d"), c.width, c.height); sgn.material.map.needsUpdate = true; } openLevel(); });
+}
+start();
+})();
+</script>
+</body>
+</html>
