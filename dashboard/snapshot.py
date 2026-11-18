@@ -52,6 +52,7 @@ def collect() -> dict:
             except Exception as e:
                 responses[f"/api/view/{drill}?key={encode(key)}"] = {"error": server.short_error(e)}
     responses["/api/counts"] = counts
+    responses["/api/activity?after=0"] = server.read_activity(0)
 
     databases = [r[0] for r in responses["/api/view/glue_databases"].get("rows", [])]
     database = "lending" if "lending" in databases else (databases[0] if databases else "")
