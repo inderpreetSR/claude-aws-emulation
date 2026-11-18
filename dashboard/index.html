@@ -73,6 +73,7 @@ select,input{background:var(--panel);color:var(--ink);border:1px solid var(--lin
 .term .ok{color:var(--term-ok)} .term .bad{color:var(--term-bad)} .term .step{color:var(--term-step);font-weight:700;display:block;margin-top:12px}
 .term .detail{color:var(--term-dim);display:block} .term .res{color:var(--term-dim)}
 .term .line{display:block;margin-bottom:6px}
+.term .says{color:var(--term-ink);font-weight:700}
 .livebar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line)}
 .live{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .live .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
@@ -155,12 +156,12 @@ let activityTimer = null, activityNext = 0;
 function fmtEntry(e){
   const t = `<span class="t">${esc(e.time)}</span> `;
   if (e.kind === "step") return `<span class="step">▸ ${esc(e.text)}</span>` + (e.detail ? `<span class="detail">${esc(e.detail)}</span>` : "");
-  if (e.kind === "info") return `<span class="line">${t}${esc(e.text)}</span>`;
+  if (e.kind === "info") return `<span class="line says">${t}${esc(e.text)}</span>`;
   const who = `<span class="who">[${esc(e.who)}]</span> `;
   const head = `${t}${who}<span class="cmd">$ ${esc(e.cli)}</span>`;
   if (e.kind === "call") {
     let res = JSON.stringify(e.result ?? {});
-    if (res.length > 420) res = res.slice(0, 420) + " …";
+    if (res.length > 160) res = res.slice(0, 160) + " …";
     return `<span class="line">${head}\n   <span class="ok">✓ ${esc(e.status)} OK</span> <span class="res">${esc(res)}</span></span>`;
   }
   return `<span class="line">${head}\n   <span class="bad">✗ ${esc(e.status)} ${esc(e.code)}</span> <span class="res">${esc(e.message)}</span></span>`;
