@@ -85,8 +85,8 @@ select,input{background:var(--panel);color:var(--ink);border:1px solid var(--lin
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let views = [], current = {id:null, key:null, parent:null};
-const GOOD = /^(SUCCEEDED|Completed|ACTIVE|OK|InService|Available)$/i, BAD = /^(FAILED|Failed|ALARM|CANCELLED|Stopped|ABORTED|TIMED_OUT)$/i,
-      BUSY = /^(RUNNING|InProgress|QUEUED|Creating|INSUFFICIENT_DATA|Stopping)$/i;
+const GOOD = /^(SUCCEEDED|Completed|ACTIVE|OK|InService|Available|ALLOW|attached|Allow)$/i, BAD = /^(FAILED|Failed|ALARM|CANCELLED|Stopped|ABORTED|TIMED_OUT|DENY|Deny|deleted)$/i,
+      BUSY = /^(RUNNING|InProgress|QUEUED|Creating|INSUFFICIENT_DATA|Stopping|pending)$/i;
 
 async function api(path, opts){ const r = await fetch(path, opts); return r.json(); }
 
