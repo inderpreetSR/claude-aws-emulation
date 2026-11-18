@@ -55,7 +55,7 @@ jupyter lab labs/
 AWS Emulator has no interface of its own. `main` provides three:
 
 - **Notebooks:** each lab shows results as tables and charts.
-- **Dashboard:** `python dashboard/server.py`, then open http://127.0.0.1:8800. It browses VPCs, subnets, route tables, security group and network ACL rules, EC2 instances, IAM users, groups, roles and their effective policies, plus S3, Glue, DynamoDB, SageMaker, Step Functions and CloudWatch, and has an Athena SQL console.
+- **Dashboard:** `python dashboard/server.py`, then open http://127.0.0.1:8800. It browses VPCs, subnets, route tables, security group and network ACL rules, EC2 instances, IAM users, groups, roles and their effective policies, plus S3, Glue, DynamoDB, SageMaker, Step Functions and CloudWatch, and has an Athena SQL console. `python dashboard/snapshot.py` saves a read-only copy as one HTML file you can share or open anywhere.
 - **Third-party tools:** see `desktop-tools/README.md` for a DynamoDB web browser, Cyberduck settings and the AWS CLI.
 
 ## What is on main

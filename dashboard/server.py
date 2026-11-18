@@ -1,6 +1,7 @@
 """Local dashboard for AWS Emulator.
 
     python dashboard/server.py            # then open http://127.0.0.1:8800
+    python dashboard/snapshot.py          # or save a read-only copy as one HTML file
 
 A browser cannot call the emulator directly (requests must be SigV4-signed and the
 certificate is self-signed), so this small server makes the calls with boto3 and hands
@@ -9,6 +10,7 @@ the page plain JSON. It binds to 127.0.0.1 only and needs nothing beyond boto3.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,6 +22,9 @@ import emu  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 PORT = 8800
+# Loopback only by default. Set DASHBOARD_HOST=0.0.0.0 inside a container whose
+# preview reaches the page from outside it; never on a shared network.
+HOST = os.environ.get("DASHBOARD_HOST", "127.0.0.1")
 ATHENA_RESULTS_BUCKET = "emulator-dashboard-athena-results"
 _clients: dict = {}
 
@@ -458,7 +463,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"error": "Not found"}, 404)
         # Only the page served from this server may post; blocks other sites open in the browser.
         origin = self.headers.get("Origin")
-        if origin and origin not in (f"http://127.0.0.1:{PORT}", f"http://localhost:{PORT}"):
+        if origin and urlparse(origin).netloc != self.headers.get("Host"):
             return self.send_json({"error": "Forbidden"}, 403)
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))) or b"{}")
@@ -471,5 +476,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         PORT = int(sys.argv[1])
     print(f"Emulator endpoint: {emu.settings()['endpoint_url']}  healthy: {emu.health()}")
-    print(f"Dashboard: http://127.0.0.1:{PORT}")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    print(f"Dashboard: http://127.0.0.1:{PORT}  (listening on {HOST})")
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
