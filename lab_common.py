@@ -24,7 +24,7 @@ def attempt(label, fn):
         return out
     except ClientError as e:
         err = e.response["Error"]
-        print(f"REFUSED {label}: {err.get('Code')} - {err.get('Message', '')[:200]}")
+        print(f"REFUSED {label}: {err.get('Code')} - {err.get('Message', '')[:400]}")
 
 
 def ensure_lake(rows: int = 2000) -> pd.DataFrame:
