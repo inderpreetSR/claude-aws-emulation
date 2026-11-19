@@ -66,9 +66,13 @@ def remove_previous_run():
             iam.delete_user(UserName=user)
         except ClientError:
             pass                                   # it did not exist: nothing to remove
-    try:
-        iam.detach_group_policy(GroupName=GROUP, PolicyArn=POLICY_ARN)
-        iam.delete_group_policy(GroupName=GROUP, PolicyName="DataScienceGuardrails")
+    try:   # remove every policy on the group, including ones added later (such as in SageMaker lessons)
+        for p in iam.list_attached_group_policies(GroupName=GROUP)["AttachedPolicies"]:
+            iam.detach_group_policy(GroupName=GROUP, PolicyArn=p["PolicyArn"])
+        for name in iam.list_group_policies(GroupName=GROUP)["PolicyNames"]:
+            iam.delete_group_policy(GroupName=GROUP, PolicyName=name)
+        for u in iam.get_group(GroupName=GROUP)["Users"]:       # members this script didn't create
+            iam.remove_user_from_group(GroupName=GROUP, UserName=u["UserName"])
         iam.delete_group(GroupName=GROUP)
     except ClientError:
         pass
